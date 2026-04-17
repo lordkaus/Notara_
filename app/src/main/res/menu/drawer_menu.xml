@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_notes"
+            android:icon="@drawable/ic_notes"
+            android:title="Todas as Notas" />
+            <item
+            android:id="@+id/nav_favorites"
+            android:icon="@drawable/ic_star"
+            android:title="Favoritos" />
+            <item
+            android:id="@+id/nav_trash"
+            android:icon="@drawable/ic_delete"
+            android:title="Lixeira" />
+            </group>
+
+            <item android:title="Organizar">
+            <menu>
+            <item
+                android:id="@+id/nav_labels"
+                android:icon="@drawable/ic_notes"
+                android:title="Marcadores" />
+            <item
+                android:id="@+id/nav_view_style"
+                android:icon="@drawable/ic_view"
+                android:title="Estilo de Visualização" />
+            </menu>
+            </item>
+
+            <item android:title="Geral">
+            <menu>
+            <item
+                android:id="@+id/nav_settings"
+                android:icon="@drawable/ic_settings"
+                android:title="Configurações" />
+        </menu>
+    </item>
+</menu>

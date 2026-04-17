@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Notara_</string>
+    
+    <string-array name="recurrence_options">
+        <item>Sem Repetição</item>
+        <item>Diário</item>
+        <item>Semanal</item>
+        <item>Mensal</item>
+        <item>Anual</item>
+    </string-array>
+    <string name="recurring_cycles">Ciclos de Repetição</string>
+    <string name="no_cycles_found">Nenhum ciclo ativo encontrado.</string>
+    <string name="delete_cycle_title">Excluir Ciclo?</string>
+    <string name="delete_cycle_msg">Isso removerá a nota original e todas as suas repetições futuras.</string>
+</resources>

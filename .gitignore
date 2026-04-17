@@ -1,0 +1,27 @@
+# --- Documentação e Notas Pessoais ---
+skills/
+
+# --- Build e Caches do Gradle ---
+.gradle/
+build/
+/*/build/
+bin/
+
+# --- Artefatos de IDEs (IntelliJ, Android Studio, Eclipse) ---
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+.metadata/
+
+# --- Arquivos Locais e Sensíveis ---
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# --- Sistema e Logs ---
+*.log
+.DS_Store
+Thumbs.db

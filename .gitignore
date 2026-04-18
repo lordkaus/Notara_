@@ -6,14 +6,39 @@ skills/
 build/
 /*/build/
 bin/
+gen/
+out/
+.gradle
+.navigation/
 
-# --- Artefatos de IDEs (IntelliJ, Android Studio, Eclipse) ---
+# --- Artefatos de Compilação (Android) ---
+*.apk
+*.ap_
+*.dex
+*.class
+app/src/main/res/raw/
+# Se usar lint:
+lint/intermediates/
+lint/generated/
+lint/reports/
+
+# --- Chaves e Segredos (Segurança) ---
+*.jks
+*.keystore
+*.p12
+google-services.json
+
+# --- Artefatos de IDES (IntelliJ, Android Studio, VS Code, Eclipse) ---
 .idea/
 *.iml
 .project
 .classpath
 .settings/
 .metadata/
+.vscode/
+*.swp
+*.patch
+*.diff
 
 # --- Arquivos Locais e Sensíveis ---
 local.properties
@@ -21,7 +46,12 @@ captures/
 .externalNativeBuild/
 .cxx/
 
+# --- Ferramentas de CI/Publicação (F-Droid, etc) ---
+.fdroidvcs-*
+tmp/
+
 # --- Sistema e Logs ---
 *.log
 .DS_Store
 Thumbs.db
+desktop.ini

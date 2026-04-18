@@ -39,7 +39,12 @@ public class SecurityDataStore {
             MutablePreferences mutablePreferences = prefsIn.toMutablePreferences();
             mutablePreferences.set(KEY_SECURITY_ENABLED, enabled);
             return Single.just(mutablePreferences);
-        });
+        })
+                .subscribeOn(io.reactivex.rxjava3.schedulers.Schedulers.io())
+                .subscribe(
+                        prefs -> { },
+                        throwable -> android.util.Log.e("SecurityDataStore", "setSecurityEnabled failed", throwable)
+                );
     }
 
     /**

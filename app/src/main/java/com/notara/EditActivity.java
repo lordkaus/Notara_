@@ -251,9 +251,12 @@ public class EditActivity extends AppCompatActivity {
                 
                 colorView.setBackground(shape);
                 colorView.setOnClickListener(v -> {
-                    selectedColor = p;
-                    updateColorIndicator();
-                    dialog.dismiss();
+                    int pos = h.getBindingAdapterPosition();
+                    if (pos != androidx.recyclerview.widget.RecyclerView.NO_POSITION) {
+                        selectedColor = pos;
+                        updateColorIndicator();
+                        dialog.dismiss();
+                    }
                 });
             }
             @Override public int getItemCount() { return noteColors.length; }

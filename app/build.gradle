@@ -29,6 +29,7 @@ android {
     }
 
     compileOptions {
+        coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
@@ -50,6 +51,9 @@ dependencies {
     implementation "androidx.datastore:datastore-preferences-rxjava3:1.0.0"
     implementation "io.reactivex.rxjava3:rxjava:3.1.5"
     implementation "io.reactivex.rxjava3:rxandroid:3.0.2"
+    
+    // Core Library Desugaring
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
     
     // Security Crypto
     implementation "androidx.security:security-crypto:1.1.0-alpha06"

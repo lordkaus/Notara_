@@ -1,38 +1,55 @@
-# Notara_
+# 📝 Notara
 
-## 🇺🇸 English Version
+![Notara Banner](metadata/screenshots/nobara_1.jpg)
 
-Notara_ is a productivity Android application designed with a focus on **security**, **privacy**, and **visual personalization**. It offers a robust experience for managing notes and checklists, ensuring your data is protected with a modern aesthetic.
-
-### ⚡ Key Features
-* **Interactive Alarms:** Unique system where alarms trigger clickable checklists for immediate task engagement.
-* **🔒 Security:** Biometric authentication and encrypted storage for sensitive content.
-* **🎨 Customization:** Exclusive themes like *OLED Pantera Black*, Material You support, and dynamic backgrounds (Mesh/Geometric).
-* **🚀 Performance:** Ultra-lightweight app (**7.4 MB**), optimized with R8/Proguard.
-* **📱 Compatibility:** Fully tested and optimized for **Android 15**.
-
-### 🛠 Tech Stack
-* **Architecture:** Java, ViewBinding, ViewModel, LiveData.
-* **Persistence:** Room / SQLite.
-* **Security:** Android Security Crypto Library.
+**Notara** é um assistente de produtividade minimalista e ultra-seguro para Android. Projetado para quem busca organização sem abrir mão da privacidade, o Notara combina gerenciamento de tarefas, notas criptografadas e lembretes inteligentes em uma interface moderna e personalizável.
 
 ---
 
-## 🇧🇷 Versão em Português
+## 📸 Galeria
 
-Notara_ é um aplicativo de produtividade Android projetado com foco em **segurança**, **privacidade** e **personalização visual**. Oferece uma experiência robusta para gerenciamento de notas e listas, garantindo proteção de dados com uma estética moderna.
-
-### ⚡ Principais Funcionalidades
-* **Alarmes Interativos:** Sistema exclusivo onde o alarme dispara exibindo um checklist clicável para interação imediata.
-* **🔒 Segurança:** Autenticação biométrica e armazenamento criptografado.
-* **🎨 Personalização:** Temas exclusivos como *Pantera OLED Black*, suporte a Material You e fundos dinâmicos.
-* **🚀 Performance:** App ultra-leve (**7.4 MB**), otimizado com R8/Proguard.
-* **📱 Compatibilidade:** Totalmente testado e otimizado para o **Android 15**.
-
-### 🛠 Tecnologias
-* **Arquitetura:** Java, ViewBinding, ViewModel, LiveData.
-* **Persistência:** Room / SQLite.
-* **Segurança:** Android Security Crypto Library.
+<p align="center">
+  <img src="metadata/screenshots/nobara_2.jpg" width="200" />
+  <img src="metadata/screenshots/nobara_3.jpg" width="200" />
+  <img src="metadata/screenshots/nobara_4.jpg" width="200" />
+  <img src="metadata/screenshots/nobara_5.jpg" width="200" />
+</p>
+<p align="center">
+  <img src="metadata/screenshots/nobara_6.jpg" width="200" />
+  <img src="metadata/screenshots/nobara_7.jpg" width="200" />
+  <img src="metadata/screenshots/nobara_8.jpg" width="200" />
+</p>
 
 ---
-*Developed with focus on performance, security, and design.*
+
+## ⚡ Principais Funcionalidades
+
+### 🗓️ Gestão Centralizada
+*   **Notas e Checklists:** Crie anotações rápidas ou listas de tarefas detalhadas com suporte a cores e categorias.
+*   **Calendário Integrado:** Visualize seus compromissos e notas agendadas de forma intuitiva através de uma interface de calendário fluida.
+*   **Lixeira Inteligente:** Nunca perca uma ideia. Notas excluídas vão para a lixeira para recuperação futura ou exclusão definitiva.
+
+### 🔒 Segurança e Privacidade (Foco Total)
+*   **Criptografia AES-GCM:** Suas notas são protegidas com criptografia de nível militar diretamente no dispositivo.
+*   **Proteção Biométrica:** Bloqueie o acesso ao aplicativo ou a notas específicas usando sua impressão digital ou reconhecimento facial.
+*   **Armazenamento Local:** Seus dados pertencem a você. Nada é enviado para a nuvem sem o seu consentimento.
+
+### ⏰ Lembretes e Alarmes Avançados
+*   **Alarmes com Checklist:** Uma funcionalidade exclusiva onde o alarme exibe sua lista de tarefas imediatamente, garantindo que você comece a agir assim que acordar.
+*   **Recorrência Personalizada:** Configure lembretes diários, semanais, mensais ou em dias específicos da semana.
+
+### 🎨 Personalização e Widgets
+*   **Temas Dinâmicos:** Suporte ao Material You (Android 12+) e temas exclusivos como o *OLED Pantera Black*.
+*   **Widgets de Tela Inicial:** Tenha suas notas e checklists sempre à vista com widgets de diversos tamanhos e estilos.
+*   **Fundos Estilizados:** Escolha entre padrões Geométricos, Mesh ou linhas de caderno clássicas.
+
+---
+
+## 🚀 Performance
+O Notara é otimizado para ser extremamente leve e rápido, ocupando o mínimo de espaço possível e garantindo compatibilidade total com o **Android 15**.
+
+## 📥 Download
+Você pode baixar a versão mais recente do Notara (APKs profissionais divididos por arquitetura) diretamente na aba de **[Releases](https://github.com/lordkaus/Notara_/releases)**.
+
+---
+*Desenvolvido com foco em performance, segurança e design.*

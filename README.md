@@ -4,8 +4,6 @@
 
 ## 🇺🇸 English Version
 
-![Notara Banner](metadata/screenshots/nobara_1.jpg)
-
 **Notara** is a minimalist and ultra-secure productivity assistant for Android. Designed for those seeking organization without compromising privacy, Notara combines task management, encrypted notes, and smart reminders in a modern and customizable interface.
 
 ---
@@ -61,8 +59,6 @@ You can download the latest version of Notara (professional APKs split by archit
 ---
 
 ## 🇧🇷 Versão em Português
-
-![Banner Notara](metadata/screenshots/nobara_1.jpg)
 
 **Notara** é um assistente de produtividade minimalista e ultra-seguro para Android. Projetado para quem busca organização sem abrir mão da privacidade, o Notara combina gerenciamento de tarefas, notas criptografadas e lembretes inteligentes em uma interface moderna e personalizável.
 

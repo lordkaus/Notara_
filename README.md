@@ -1,6 +1,68 @@
 # 📝 Notara
 
+---
+
+## 🇺🇸 English Version
+
 ![Notara Banner](metadata/screenshots/nobara_1.jpg)
+
+**Notara** is a minimalist and ultra-secure productivity assistant for Android. Designed for those seeking organization without compromising privacy, Notara combines task management, encrypted notes, and smart reminders in a modern and customizable interface.
+
+---
+
+## 📸 Gallery
+
+<p align="center">
+  <img src="metadata/screenshots/nobara_2.jpg" width="200" />
+  <img src="metadata/screenshots/nobara_3.jpg" width="200" />
+  <img src="metadata/screenshots/nobara_4.jpg" width="200" />
+  <img src="metadata/screenshots/nobara_5.jpg" width="200" />
+</p>
+<p align="center">
+  <img src="metadata/screenshots/nobara_6.jpg" width="200" />
+  <img src="metadata/screenshots/nobara_7.jpg" width="200" />
+  <img src="metadata/screenshots/nobara_8.jpg" width="200" />
+</p>
+
+---
+
+## ⚡ Main Features
+
+### 🗓️ Centralized Management
+*   **Notes & Checklists:** Create quick notes or detailed task lists with color and category support.
+*   **Integrated Calendar:** Visualize your appointments and scheduled notes intuitively through a fluid calendar interface.
+*   **Smart Trash:** Never lose an idea. Deleted notes go to the trash for future recovery or permanent deletion.
+
+### 🔒 Security and Privacy (Total Focus)
+*   **AES-GCM Encryption:** Your notes are protected with military-grade encryption directly on the device.
+*   **Biometric Protection:** Lock access to the app or specific notes using your fingerprint or facial recognition.
+*   **Local Storage:** Your data belongs to you. Nothing is sent to the cloud without your consent.
+
+### ⏰ Advanced Reminders and Alarms
+*   **Alarms with Checklist:** An exclusive feature where the alarm immediately displays your task list, ensuring you start acting as soon as you wake up.
+*   **Custom Recurrence:** Set daily, weekly, monthly, or specific day-of-the-week reminders.
+
+### 🎨 Personalization & Widgets
+*   **Dynamic Themes:** Material You (Android 12+) support and exclusive themes like *OLED Pantera Black*.
+*   **Home Screen Widgets:** Keep your notes and checklists always in sight with widgets of various sizes and styles.
+*   **Styled Backgrounds:** Choose between Geometric, Mesh patterns, or classic notebook lines.
+
+---
+
+## 🚀 Performance
+Notara is optimized to be extremely lightweight and fast, taking up minimal space and ensuring full compatibility with **Android 15**.
+
+## 📥 Download
+You can download the latest version of Notara (professional APKs split by architecture) directly from the **[Releases](https://github.com/lordkaus/Notara_/releases)** tab.
+
+---
+*Developed with focus on performance, security, and design.*
+
+---
+
+## 🇧🇷 Versão em Português
+
+![Banner Notara](metadata/screenshots/nobara_1.jpg)
 
 **Notara** é um assistente de produtividade minimalista e ultra-seguro para Android. Projetado para quem busca organização sem abrir mão da privacidade, o Notara combina gerenciamento de tarefas, notas criptografadas e lembretes inteligentes em uma interface moderna e personalizável.
 

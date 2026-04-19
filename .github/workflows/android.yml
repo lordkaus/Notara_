@@ -25,13 +25,15 @@ jobs:
       run: chmod +x gradlew
 
     - name: Build with Gradle
-      run: ./gradlew assembleDebug
+      run: ./gradlew assembleDebug bundleDebug
 
-    - name: Upload APK
+    - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: Notara_Test
-        path: app/build/outputs/apk/debug/Notara_Test.apk
+        name: Notara_Artifacts
+        path: |
+          app/build/outputs/apk/debug/
+          app/build/outputs/bundle/debug/
 
   release:
     needs: build
@@ -40,12 +42,14 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download APK
+      - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: Notara_Test
+          name: Notara_Artifacts
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          files: Notara_Test.apk
+          files: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/bundle/debug/*.aab
           generate_release_notes: true

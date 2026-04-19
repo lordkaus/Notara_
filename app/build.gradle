@@ -11,8 +11,14 @@ android {
         versionCode 4
         versionName "1.2"
         resConfigs "pt-rBR", "en"
-        ndk {
-            abiFilters "arm64-v8a"
+    }
+
+    splits {
+        abi {
+            enable true
+            reset()
+            include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+            universalApk true
         }
     }
 
@@ -25,8 +31,10 @@ android {
     }
 
     applicationVariants.all { variant ->
-        variant.outputs.all {
-            outputFileName = "Notara_Test.apk"
+        variant.outputs.all { output ->
+            if (output.getFilter(com.android.build.OutputFile.ABI) == null) {
+                outputFileName = "Notara_Test.apk"
+            }
         }
     }
 

@@ -24,6 +24,12 @@ android {
         }
     }
 
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "Notara_Test.apk"
+        }
+    }
+
     buildFeatures {
         viewBinding true
     }

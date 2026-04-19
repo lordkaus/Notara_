@@ -50,6 +50,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            app/build/outputs/apk/debug/*.apk
-            app/build/outputs/bundle/debug/*.aab
+            **/*.apk
+            **/*.aab
           generate_release_notes: true

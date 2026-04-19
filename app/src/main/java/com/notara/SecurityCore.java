@@ -27,15 +27,19 @@ public class SecurityCore {
         keyStore.load(null);
         
         if (!keyStore.containsAlias(KEY_ALIAS)) {
-            KeyGenerator keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE);
-            keyGenerator.init(new KeyGenParameterSpec.Builder(KEY_ALIAS,
-                    KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
-                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                    .setKeySize(256)
-                    .setUserAuthenticationRequired(false) // Permite persistência após reinicialização sem exigir bio imediata
-                    .build());
-            return keyGenerator.generateKey();
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                KeyGenerator keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE);
+                keyGenerator.init(new KeyGenParameterSpec.Builder(KEY_ALIAS,
+                        KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                        .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                        .setKeySize(256)
+                        .setUserAuthenticationRequired(false) // Permite persistência após reinicialização sem exigir bio imediata
+                        .build());
+                return keyGenerator.generateKey();
+            } else {
+                throw new UnsupportedOperationException("Android M+ required for this security feature");
+            }
         }
         
         KeyStore.SecretKeyEntry entry = (KeyStore.SecretKeyEntry) keyStore.getEntry(KEY_ALIAS, null);

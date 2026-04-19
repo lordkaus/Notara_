@@ -16,6 +16,8 @@ import com.notara.ChecklistActivity;
 import com.notara.DatabaseHelper;
 import com.notara.EditActivity;
 import com.notara.MainActivity;
+import com.notara.NoteRepository;
+import com.notara.NoteRepositoryImpl;
 import com.notara.R;
 import com.notara.SettingsManager;
 
@@ -43,8 +45,8 @@ public class NoteWidgetProvider extends AppWidgetProvider {
                     toggleChecklistItem(context, noteId, itemIndex);
                 } else {
                     // Clique geral no widget - abre a nota
-                    DatabaseHelper db = new DatabaseHelper(context);
-                    DatabaseHelper.Note note = db.getNote(noteId);
+                    NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
+                    DatabaseHelper.Note note = repository.getNote(noteId);
                     if (note != null) {
                         Intent openIntent = new Intent(context, note.type == 1 ? ChecklistActivity.class : EditActivity.class);
                         openIntent.putExtra("NOTE_ID", note.id);
@@ -57,8 +59,8 @@ public class NoteWidgetProvider extends AppWidgetProvider {
     }
 
     private void toggleChecklistItem(Context context, int noteId, int index) {
-        DatabaseHelper db = new DatabaseHelper(context);
-        DatabaseHelper.Note note = db.getNote(noteId);
+        NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
+        DatabaseHelper.Note note = repository.getNote(noteId);
         if (note != null && note.type == 1) {
             String[] lines = note.content.split("\n");
             if (index >= 0 && index < lines.length) {
@@ -74,7 +76,7 @@ public class NoteWidgetProvider extends AppWidgetProvider {
                         if (i < lines.length - 1) newContent.append("\n");
                     }
                     note.content = newContent.toString();
-                    db.updateNote(note);
+                    repository.updateNote(note);
                     
                     // Notifica atualização
                     updateAllWidgets(context);
@@ -98,8 +100,8 @@ public class NoteWidgetProvider extends AppWidgetProvider {
         SettingsManager settings = new SettingsManager(context);
         int noteId = context.getSharedPreferences("widget_prefs", Context.MODE_PRIVATE).getInt("note_" + appWidgetId, -1);
         
-        DatabaseHelper db = new DatabaseHelper(context);
-        DatabaseHelper.Note note = (noteId == -1) ? db.getLatestNote() : db.getNote(noteId);
+        NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
+        DatabaseHelper.Note note = (noteId == -1) ? repository.getLatestNote() : repository.getNote(noteId);
 
         // Detecta o layout baseado no tamanho do widget
         Bundle options = appWidgetManager.getAppWidgetOptions(appWidgetId);

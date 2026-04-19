@@ -26,6 +26,7 @@ import android.widget.GridView;
 import android.widget.Spinner;
 import android.widget.TimePicker;
 import android.widget.Toast;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -45,7 +46,7 @@ import java.util.Locale;
 
 public class ChecklistActivity extends AppCompatActivity {
     private ActivityChecklistBinding binding;
-    private DatabaseHelper db;
+    private NoteViewModel viewModel;
     private List<CheckItem> items = new ArrayList<>();
     private CheckAdapter adapter;
     private int noteId = -1;
@@ -78,7 +79,7 @@ public class ChecklistActivity extends AppCompatActivity {
         binding = ActivityChecklistBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        db = new DatabaseHelper(this);
+        viewModel = new ViewModelProvider(this).get(NoteViewModel.class);
         noteId = getIntent().getIntExtra("NOTE_ID", -1);
         
         // Se for uma nova checklist vinda do calendário, pega o tempo sugerido
@@ -87,7 +88,7 @@ public class ChecklistActivity extends AppCompatActivity {
         }
 
         if (noteId != -1) {
-            currentNote = db.getNote(noteId);
+            currentNote = viewModel.getNote(noteId);
             if (currentNote != null) {
                 binding.etChecklistTitle.setText(currentNote.title);
                 selectedColor = currentNote.color;
@@ -460,13 +461,13 @@ public class ChecklistActivity extends AppCompatActivity {
 
         if (currentNote == null) {
             currentNote = new DatabaseHelper.Note(-1, title, finalContent, 1, selectedColor, 0, 0, null, reminderTime, recurrenceType, recurrenceDays, null, 0, alertType, System.currentTimeMillis(), originalReminderTime);
-            noteId = (int) db.addNote(currentNote); currentNote.id = noteId;
+            noteId = (int) viewModel.addNote(currentNote); currentNote.id = noteId;
         } else {
             currentNote.title = title; currentNote.content = finalContent; currentNote.color = selectedColor;
             currentNote.reminderTime = reminderTime; currentNote.originalReminderTime = originalReminderTime;
             currentNote.recurrenceType = recurrenceType; currentNote.recurrenceDays = recurrenceDays;
             currentNote.alertType = alertType; currentNote.type = 1;
-            db.updateNote(currentNote);
+            viewModel.updateNote(currentNote);
         }
         if (reminderTime > System.currentTimeMillis()) AlarmReceiver.rescheduleAlarm(this, currentNote);
         else if (reminderTime == 0 && noteId != -1) AlarmReceiver.cancelAlarm(this, noteId);

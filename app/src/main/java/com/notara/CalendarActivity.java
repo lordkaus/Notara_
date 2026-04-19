@@ -2,15 +2,9 @@ package com.notara;
 
 import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -18,7 +12,6 @@ import com.notara.databinding.ActivityCalendarBinding;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -26,7 +19,7 @@ public class CalendarActivity extends AppCompatActivity {
     private ActivityCalendarBinding binding;
     private Calendar currentCalendar;
     private Calendar selectedDate;
-    private DatabaseHelper db;
+    private NoteViewModel viewModel;
     private DayAdapter dayAdapter;
     private NoteAdapter noteAdapter;
     private List<DatabaseHelper.Note> allScheduledNotes;
@@ -47,7 +40,7 @@ public class CalendarActivity extends AppCompatActivity {
         binding = ActivityCalendarBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        db = new DatabaseHelper(this);
+        viewModel = new ViewModelProvider(this).get(NoteViewModel.class);
         currentCalendar = Calendar.getInstance();
         selectedDate = Calendar.getInstance();
         
@@ -69,28 +62,22 @@ public class CalendarActivity extends AppCompatActivity {
     }
 
     private void showRecurringNotesDialog() {
-        List<DatabaseHelper.Note> recurringNotes = db.getRecurringNotes();
+        List<DatabaseHelper.Note> recurringNotes = viewModel.getRecurringNotes();
 
-        // Create a RecyclerView to display the notes
         RecyclerView recyclerView = new RecyclerView(this);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         NoteAdapter adapter = new NoteAdapter(recurringNotes, new NoteAdapter.NoteActionListener() {
-            @Override
-            public void onNoteAction() {
-                // No-op for this dialog, as notes are managed via long click
-            }
-
-            @Override
-            public void onNoteLongClick(DatabaseHelper.Note note) {
+            @Override public void onNoteAction() {}
+            @Override public void onNoteLongClick(DatabaseHelper.Note note) {
                 new com.google.android.material.dialog.MaterialAlertDialogBuilder(CalendarActivity.this)
                     .setTitle(R.string.delete_cycle_title)
                     .setMessage(R.string.delete_cycle_msg)
                     .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                        note.isTrashed = 1; // Move to trash
-                        db.updateNote(note);
-                        showRecurringNotesDialog(); // Refresh the dialog
-                        updateUI(); // Refresh main calendar UI
+                        note.isTrashed = 1;
+                        viewModel.updateNote(note);
+                        showRecurringNotesDialog();
+                        updateUI();
                     })
                     .setNegativeButton(android.R.string.cancel, null)
                     .show();
@@ -139,7 +126,7 @@ public class CalendarActivity extends AppCompatActivity {
     }
 
     private void setupNoteList() {
-        binding.rvNotes.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
+        binding.rvNotes.setLayoutManager(new LinearLayoutManager(this));
         noteAdapter = new NoteAdapter(new ArrayList<>(), new NoteAdapter.NoteActionListener() {
             @Override public void onNoteAction() { updateUI(); }
             @Override public void onNoteLongClick(DatabaseHelper.Note note) {}
@@ -151,34 +138,26 @@ public class CalendarActivity extends AppCompatActivity {
         SimpleDateFormat sdf = new SimpleDateFormat("MMMM yyyy", Locale.getDefault());
         binding.tvMonthYear.setText(sdf.format(currentCalendar.getTime()));
         
-        // Calcula o fim do período visível (aprox. 42 dias a partir do início da grade)
         Calendar rangeEndCal = (Calendar) currentCalendar.clone();
         rangeEndCal.set(Calendar.DAY_OF_MONTH, 1);
         rangeEndCal.add(Calendar.DAY_OF_MONTH, 42); 
         
-        allScheduledNotes = db.getScheduledNotesUpTo(rangeEndCal.getTimeInMillis());
+        allScheduledNotes = viewModel.getScheduledNotesUpTo(rangeEndCal.getTimeInMillis());
         
-        // Prepara os dados para o adapter de forma desacoplada
         dayAdapter.updateDays(prepareCalendarDays());
         updateNoteList();
     }
 
     private List<CalendarDay> prepareCalendarDays() {
         List<CalendarDay> days = new ArrayList<>();
-        
-        // Data base do mês atual
         java.time.LocalDate firstOfMonth = java.time.LocalDate.of(
             currentCalendar.get(Calendar.YEAR),
             currentCalendar.get(Calendar.MONTH) + 1,
             1
         );
         
-        // Calcula o início da grade (primeiro dia visível)
-        //getDayOfWeek() retorna 1 (segunda) a 7 (domingo)
-        // No calendário tradicional, domingo é 1. Vamos ajustar para o domingo ser o início.
-        int dayOfWeek = firstOfMonth.getDayOfWeek().getValue(); // 1=seg, ..., 7=dom
-        int daysBefore = (dayOfWeek % 7); // Se for domingo(7), daysBefore=0. Se for segunda(1), daysBefore=1.
-        
+        int dayOfWeek = firstOfMonth.getDayOfWeek().getValue(); 
+        int daysBefore = (dayOfWeek % 7);
         java.time.LocalDate startDate = firstOfMonth.minusDays(daysBefore);
         
         java.time.LocalDate today = java.time.LocalDate.now();
@@ -187,7 +166,6 @@ public class CalendarActivity extends AppCompatActivity {
 
         for (int i = 0; i < 42; i++) {
             java.time.LocalDate date = startDate.plusDays(i);
-            
             List<Integer> colors = new ArrayList<>();
             List<Boolean> ghosts = new ArrayList<>();
             
@@ -238,37 +216,25 @@ public class CalendarActivity extends AppCompatActivity {
 
     private boolean shouldShowOnDay(java.time.LocalDate gridDate, DatabaseHelper.Note note) {
         java.time.LocalDate eventDate = note.getLocalDate();
-        
-        // Se a data da grade for antes da data de início, não mostra
         if (gridDate.isBefore(eventDate)) return false;
-        
-        // Lógica de Recorrência
         if (gridDate.isEqual(eventDate)) return true;
-        if (note.recurrenceType == 0) return false; // Sem repetição
+        if (note.recurrenceType == 0) return false;
         
         switch (note.recurrenceType) {
-            case 1: // Diário
-                return true;
-            case 2: // Semanal
-                return gridDate.getDayOfWeek() == eventDate.getDayOfWeek();
-            case 3: // Mensal
-                // Verifica se o dia do mês coincide. 
-                // Se o evento foi criado no dia 31 e o mês atual só tem 30, mostra no dia 30.
+            case 1: return true;
+            case 2: return gridDate.getDayOfWeek() == eventDate.getDayOfWeek();
+            case 3:
                 int targetDay = eventDate.getDayOfMonth();
                 int lastDayOfMonth = gridDate.lengthOfMonth();
                 return gridDate.getDayOfMonth() == Math.min(targetDay, lastDayOfMonth);
-            case 4: // Anual
-                // Verifica se o mês coincide
+            case 4:
                 if (gridDate.getMonth() != eventDate.getMonth()) return false;
-                // Verifica o dia (ajustando para 29 de fevereiro em anos não bissextos)
                 int targetDayYearly = eventDate.getDayOfMonth();
                 int lastDayOfMonthYearly = gridDate.lengthOfMonth();
                 return gridDate.getDayOfMonth() == Math.min(targetDayYearly, lastDayOfMonthYearly);
-            case 5: // Personalizado (Dias da Semana)
-                // LocalDate DayOfWeek: 1 (seg) a 7 (dom). 
-                // Nosso bitmask: Dom=0, Seg=1, Ter=2, Qua=3, Qui=4, Sex=5, Sab=6
-                int dayOfWeekValue = gridDate.getDayOfWeek().getValue(); // 1-7
-                int bitShift = dayOfWeekValue % 7; // Seg:1%7=1, Ter:2%7=2... Dom:7%7=0
+            case 5:
+                int dayOfWeekValue = gridDate.getDayOfWeek().getValue();
+                int bitShift = dayOfWeekValue % 7;
                 return (note.recurrenceDays & (1 << bitShift)) != 0;
         }
         return false;

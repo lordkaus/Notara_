@@ -26,8 +26,8 @@ public class AlarmReceiver extends BroadcastReceiver {
         int noteId = intent.getIntExtra("id", -1);
         if (noteId == -1) return;
 
-        DatabaseHelper db = new DatabaseHelper(context);
-        DatabaseHelper.Note note = db.getNote(noteId);
+        NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
+        DatabaseHelper.Note note = repository.getNote(noteId);
         if (note == null) return;
 
         if (note.alertType == 1) {
@@ -87,8 +87,8 @@ public class AlarmReceiver extends BroadcastReceiver {
     }
 
     public static void rescheduleAllAlarms(Context context) {
-        DatabaseHelper db = new DatabaseHelper(context);
-        java.util.List<DatabaseHelper.Note> notes = db.searchNotes("", false, null);
+        NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
+        java.util.List<DatabaseHelper.Note> notes = repository.searchNotes("", false, null);
         for (DatabaseHelper.Note note : notes) {
             if (note.reminderTime > System.currentTimeMillis()) {
                 rescheduleAlarm(context, note);
@@ -157,8 +157,8 @@ public class AlarmReceiver extends BroadcastReceiver {
         note.reminderTime = nextReminderTime;
         
         // Persiste a mudança no banco de dados para que o alarme não se perca após reinicialização
-        DatabaseHelper db = new DatabaseHelper(context);
-        db.updateNote(note);
+        NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
+        repository.updateNote(note);
         
         rescheduleAlarm(context, note);
     }

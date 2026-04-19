@@ -10,6 +10,7 @@ gen/
 out/
 .gradle
 .navigation/
+.metadata/
 
 # --- Artefatos de Compilação (Android) ---
 *.apk

@@ -234,8 +234,7 @@ private void pinWidget(DatabaseHelper.Note note) {
             new SecurityManager.AuthCallback() {
                 @Override
                 public void onAuthenticated() {
-                    new DatabaseHelper(MainActivity.this).deleteNoteForever(note.id);
-                    viewModel.refreshNotes();
+                    viewModel.deleteNoteForever(note.id);
                     Toast.makeText(MainActivity.this, "Nota excluída permanentemente", Toast.LENGTH_SHORT).show();
                 }
 

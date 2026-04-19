@@ -5,33 +5,29 @@ import android.os.Bundle;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Toast;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.biometric.BiometricPrompt;
-import androidx.core.content.ContextCompat;
+import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.switchmaterial.SwitchMaterial;
-import java.util.concurrent.Executor;
 import java.util.List;
 
 public class SettingsActivity extends AppCompatActivity {
     private SettingsManager settings;
-    private DatabaseHelper db;
+    private NoteViewModel viewModel;
     private SecurityManager securityManager;
     private SecurityDataStore securityDataStore;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         settings = new SettingsManager(this);
-        db = new DatabaseHelper(this);
+        viewModel = new ViewModelProvider(this).get(NoteViewModel.class);
         securityManager = new SecurityManager(this);
         securityDataStore = SecurityDataStore.getInstance(this);
         
-        // Aplica o tema ANTES do setContentView
         int theme = settings.getTheme();
-        if (theme == 0) { // Apenas Light força ícones pretos
+        if (theme == 0) {
             setTheme(R.style.Theme_Notara);
             getWindow().getDecorView().setSystemUiVisibility(android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
         } else {
@@ -55,7 +51,7 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void setupPlanningSettings() {
         findViewById(R.id.btnRecurringNotes).setOnClickListener(v -> {
-            java.util.List<DatabaseHelper.Note> recurringNotes = db.getRecurringNotes();
+            List<DatabaseHelper.Note> recurringNotes = viewModel.getRecurringNotes();
             if (recurringNotes.isEmpty()) {
                 Toast.makeText(this, "Nenhuma nota recorrente encontrada", Toast.LENGTH_SHORT).show();
                 return;
@@ -149,7 +145,6 @@ public class SettingsActivity extends AppCompatActivity {
         RadioGroup rg = findViewById(R.id.rgThemes);
         int currentTheme = settings.getTheme();
         
-        // Define o estado inicial correto dos RadioButtons
         if (currentTheme == 0) ((RadioButton) findViewById(R.id.rbLight)).setChecked(true);
         else if (currentTheme == 1) ((RadioButton) findViewById(R.id.rbPantera)).setChecked(true);
         else if (currentTheme == 2) ((RadioButton) findViewById(R.id.rbDynamicBlack)).setChecked(true);
@@ -166,7 +161,6 @@ public class SettingsActivity extends AppCompatActivity {
             showRestartDialog();
         });
 
-        // Configuração da Transparência
         Slider sliderTrans = findViewById(R.id.sliderTransparency);
         android.widget.TextView tvTransValue = findViewById(R.id.tvTransparencyValue);
         int currentTrans = settings.getTransparency();
@@ -177,8 +171,6 @@ public class SettingsActivity extends AppCompatActivity {
             int val = (int) value;
             settings.setTransparency(val);
             tvTransValue.setText(val + "%");
-            
-            // Atualiza widgets em tempo real no launcher
             com.notara.widget.NoteWidgetProvider.updateAllWidgets(this);
             applyBgTheme();
         });
@@ -221,21 +213,18 @@ public class SettingsActivity extends AppCompatActivity {
         if (bgView == null) return;
         
         int bgTheme = settings.getBgTheme();
-        if (bgTheme == 1) { // Mesh
+        if (bgTheme == 1) {
             bgView.setBackgroundResource(R.drawable.bg_mesh);
-        } else if (bgTheme == 2) { // Geometric
+        } else if (bgTheme == 2) {
             bgView.setBackgroundResource(R.drawable.bg_geometric);
-        } else { // Default
+        } else {
             bgView.setBackground(null);
         }
     }
 
     private void setupSecuritySettings() {
         SwitchMaterial swBio = findViewById(R.id.switchBiometric);
-        
-        // Carrega estado do DataStore
         swBio.setChecked(securityDataStore.isSecurityEnabledSync());
-        
         swBio.setOnCheckedChangeListener((v, checked) -> {
             if (checked && !securityManager.isAuthAvailable() && !securityManager.isInternalPasswordSet()) {
                 v.setChecked(false);
@@ -245,8 +234,6 @@ public class SettingsActivity extends AppCompatActivity {
                 settings.setBiometricEnabled(checked);
             }
         });
-        
-        // Exibe o botão para gerenciar métodos de segurança
         findViewById(R.id.btnSetAppPassword).setVisibility(android.view.View.VISIBLE);
         findViewById(R.id.btnSetAppPassword).setOnClickListener(v -> {
             securityManager.promptSecuritySetup(this);
@@ -271,7 +258,6 @@ public class SettingsActivity extends AppCompatActivity {
                             public void onAuthenticated() {
                                 performFullReset();
                             }
-
                             @Override
                             public void onError(String error) {
                                 Toast.makeText(SettingsActivity.this, "Erro na autenticação: " + error, Toast.LENGTH_SHORT).show();
@@ -284,17 +270,12 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void performFullReset() {
-        db.resetAllNotes();
+        viewModel.resetAllNotes();
         settings.clearAll();
         securityDataStore.clearAll();
         securityManager.clearAll();
-        
-        // Atualiza widgets
         com.notara.widget.NoteWidgetProvider.updateAllWidgets(this);
-
         Toast.makeText(this, "Todos os dados e configurações foram redefinidos.", Toast.LENGTH_LONG).show();
-        
-        // Finaliza a activity e retorna para a tela inicial (que será recriada limpa)
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);

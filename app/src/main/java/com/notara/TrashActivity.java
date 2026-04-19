@@ -4,53 +4,70 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.StaggeredGridLayoutManager;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.notara.databinding.ActivityTrashBinding;
 import java.util.ArrayList;
-import java.util.List;
 
 public class TrashActivity extends AppCompatActivity {
     private ActivityTrashBinding binding;
-    private DatabaseHelper db;
+    private NoteViewModel viewModel;
     private NoteAdapter adapter;
     private SettingsManager settings;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         settings = new SettingsManager(this);
-        db = new DatabaseHelper(this);
-
+        
         // Aplica o tema
-        int theme = settings.getTheme();
-        if (theme == 0 || theme == 3) {
-            setTheme(R.style.Theme_Notara);
-            getWindow().getDecorView().setSystemUiVisibility(android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-        } else {
-            setTheme(theme == 1 ? R.style.Theme_Notara_Pantera : R.style.Theme_Notara);
-            getWindow().getDecorView().setSystemUiVisibility(android.view.View.SYSTEM_UI_FLAG_VISIBLE);
-        }
+        applyTheme();
 
         super.onCreate(savedInstanceState);
         binding = ActivityTrashBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        viewModel = new ViewModelProvider(this).get(NoteViewModel.class);
+        viewModel.toggleTrash(true);
+
         setupToolbar();
         setupRecyclerView();
-        loadTrash();
+
+        viewModel.getNotes().observe(this, notes -> {
+            if (notes.isEmpty()) {
+                binding.emptyTrashState.setVisibility(View.VISIBLE);
+                binding.rvTrash.setVisibility(View.GONE);
+                binding.btnClearTrash.setVisibility(View.GONE);
+            } else {
+                binding.emptyTrashState.setVisibility(View.GONE);
+                binding.rvTrash.setVisibility(View.VISIBLE);
+                binding.btnClearTrash.setVisibility(View.VISIBLE);
+                adapter.setNotes(notes);
+            }
+        });
 
         binding.btnClearTrash.setOnClickListener(v -> {
             new MaterialAlertDialogBuilder(this)
                 .setTitle("Esvaziar Lixeira?")
                 .setMessage("Todas as notas na lixeira serão apagadas permanentemente.")
                 .setPositiveButton("Esvaziar", (d, w) -> {
-                    db.clearTrash();
-                    loadTrash();
+                    viewModel.clearTrash();
                     Toast.makeText(this, "Lixeira esvaziada", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Cancelar", null)
                 .show();
         });
+    }
+
+    private void applyTheme() {
+        int theme = settings.getTheme();
+        if (theme == 0 || theme == 3) {
+            setTheme(R.style.Theme_Notara);
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+        } else {
+            setTheme(theme == 1 ? R.style.Theme_Notara_Pantera : R.style.Theme_Notara);
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+        }
     }
 
     private void setupToolbar() {
@@ -74,7 +91,7 @@ public class TrashActivity extends AppCompatActivity {
         adapter = new NoteAdapter(new ArrayList<>(), new NoteAdapter.NoteActionListener() {
             @Override
             public void onNoteAction() {
-                loadTrash();
+                viewModel.refreshNotes();
             }
 
             @Override
@@ -85,32 +102,16 @@ public class TrashActivity extends AppCompatActivity {
         binding.rvTrash.setAdapter(adapter);
     }
 
-    private void loadTrash() {
-        List<DatabaseHelper.Note> trashedNotes = db.searchNotes(null, true, null);
-        if (trashedNotes.isEmpty()) {
-            binding.emptyTrashState.setVisibility(View.VISIBLE);
-            binding.rvTrash.setVisibility(View.GONE);
-            binding.btnClearTrash.setVisibility(View.GONE);
-        } else {
-            binding.emptyTrashState.setVisibility(View.GONE);
-            binding.rvTrash.setVisibility(View.VISIBLE);
-            binding.btnClearTrash.setVisibility(View.VISIBLE);
-            adapter.setNotes(trashedNotes);
-        }
-    }
-
     private void showTrashOptions(DatabaseHelper.Note note) {
         String[] options = {"Restaurar", "Excluir Permanentemente"};
         new MaterialAlertDialogBuilder(this)
             .setTitle(note.title)
             .setItems(options, (dialog, which) -> {
                 if (which == 0) {
-                    db.restoreNote(note.id);
-                    loadTrash();
+                    viewModel.restoreNote(note);
                     Toast.makeText(this, "Nota restaurada", Toast.LENGTH_SHORT).show();
                 } else {
-                    db.deleteNoteForever(note.id);
-                    loadTrash();
+                    viewModel.deleteNoteForever(note.id);
                     Toast.makeText(this, "Nota excluída para sempre", Toast.LENGTH_SHORT).show();
                 }
             })

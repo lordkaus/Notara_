@@ -6,6 +6,8 @@ import android.os.Bundle;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
 
+import com.notara.NoteRepository;
+import com.notara.NoteRepositoryImpl;
 import com.notara.DatabaseHelper;
 import com.notara.R;
 
@@ -41,8 +43,8 @@ public class NoteWidgetService extends RemoteViewsService {
 
         private void loadData() {
             if (noteId == -1) return;
-            DatabaseHelper db = new DatabaseHelper(context);
-            DatabaseHelper.Note note = db.getNote(noteId);
+            NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
+            DatabaseHelper.Note note = repository.getNote(noteId);
             items.clear();
             checkedStatus.clear();
             if (note != null && note.type == 1 && note.content != null) {

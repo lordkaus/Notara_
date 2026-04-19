@@ -6,6 +6,8 @@ import android.os.Bundle;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
 
+import com.notara.NoteRepository;
+import com.notara.NoteRepositoryImpl;
 import com.notara.DatabaseHelper;
 import com.notara.R;
 
@@ -37,9 +39,9 @@ public class AllNotesWidgetService extends RemoteViewsService {
         }
 
         private void loadData() {
-            DatabaseHelper db = new DatabaseHelper(context);
+            NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
             // Busca todas as notas (não excluídas), ordenadas por modificação
-            notes = db.searchNotes("", false, null);
+            notes = repository.searchNotes("", false, null);
         }
 
         @Override public void onDestroy() { notes.clear(); }

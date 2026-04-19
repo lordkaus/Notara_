@@ -1,0 +1,7 @@
+Plano de Refatoração MVVM + Clean Code (Projeto Notara)
+
+Fase 1: Rede de Segurança (Testes Unitários) - Iniciada (Testes de Repositório criados)
+Fase 2: Camada de Repositório (NoteRepository) - Concluída
+Fase 3: Refatoração de ViewModel e Lógica de Negócio - Concluída
+Fase 4: Limpeza final e migração de AlarmReceiver/Widgets - Concluída
+Fase 5: Testes e Verificação Final - Concluída (Build verificado)

@@ -8,14 +8,14 @@ import androidx.lifecycle.MutableLiveData;
 import java.util.List;
 
 public class NoteViewModel extends AndroidViewModel {
-    private final DatabaseHelper db;
+    private final NoteRepository repository;
     private final MutableLiveData<List<DatabaseHelper.Note>> notes = new MutableLiveData<>();
     private String currentQuery = "";
     private boolean showTrashed = false;
 
     public NoteViewModel(@NonNull Application application) {
         super(application);
-        db = new DatabaseHelper(application);
+        repository = new NoteRepositoryImpl(new DatabaseHelper(application));
         refreshNotes();
     }
 
@@ -24,7 +24,7 @@ public class NoteViewModel extends AndroidViewModel {
     }
 
     public void refreshNotes() {
-        notes.setValue(db.searchNotes(currentQuery, showTrashed, null));
+        notes.setValue(repository.searchNotes(currentQuery, showTrashed, null));
         com.notara.widget.NoteWidgetProvider.updateAllWidgets(getApplication());
     }
 
@@ -42,21 +42,59 @@ public class NoteViewModel extends AndroidViewModel {
         int newPinned = (note.isPinned == 1) ? 0 : 1;
         DatabaseHelper.Note updated = copyNote(note);
         updated.isPinned = newPinned;
-        db.updateNote(updated);
+        repository.updateNote(updated);
         refreshNotes();
     }
 
     public void moveToTrash(DatabaseHelper.Note note) {
         DatabaseHelper.Note updated = copyNote(note);
         updated.isTrashed = 1;
-        db.updateNote(updated);
+        repository.updateNote(updated);
         refreshNotes();
     }
 
     public void restoreNote(DatabaseHelper.Note note) {
         DatabaseHelper.Note updated = copyNote(note);
         updated.isTrashed = 0;
-        db.updateNote(updated);
+        repository.updateNote(updated);
+        refreshNotes();
+    }
+
+    public void deleteNoteForever(int id) {
+        repository.deleteNoteForever(id);
+        refreshNotes();
+    }
+
+    public DatabaseHelper.Note getNote(int id) {
+        return repository.getNote(id);
+    }
+
+    public long addNote(DatabaseHelper.Note note) {
+        long id = repository.addNote(note);
+        com.notara.widget.NoteWidgetProvider.updateAllWidgets(getApplication());
+        return id;
+    }
+
+    public void updateNote(DatabaseHelper.Note note) {
+        repository.updateNote(note);
+        refreshNotes();
+    }
+
+    public List<DatabaseHelper.Note> getScheduledNotesUpTo(long endTime) {
+        return repository.getScheduledNotesUpTo(endTime);
+    }
+
+    public List<DatabaseHelper.Note> getRecurringNotes() {
+        return repository.getRecurringNotes();
+    }
+
+    public void clearTrash() {
+        repository.clearTrash();
+        refreshNotes();
+    }
+
+    public void resetAllNotes() {
+        repository.resetAllNotes();
         refreshNotes();
     }
 
@@ -73,7 +111,7 @@ public class NoteViewModel extends AndroidViewModel {
                 // Ao destrancar, descriptografa o conteúdo para texto simples
                 updated.content = SecurityCore.decrypt(note.content);
             }
-            db.updateNote(updated);
+            repository.updateNote(updated);
             refreshNotes();
         } catch (Exception e) {
             e.printStackTrace();

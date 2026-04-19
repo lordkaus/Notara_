@@ -8,8 +8,8 @@ android {
         applicationId "com.notara"
         minSdk 21
         targetSdk 35
-        versionCode 5
-        versionName "1.2.1"
+        versionCode 6
+        versionName "1.2.2"
         resConfigs "pt-rBR", "en"
     }
 
@@ -32,8 +32,11 @@ android {
 
     applicationVariants.all { variant ->
         variant.outputs.all { output ->
-            if (output.getFilter(com.android.build.OutputFile.ABI) == null) {
-                outputFileName = "Notara_Test.apk"
+            def abi = output.getFilter(com.android.build.OutputFile.ABI)
+            if (abi != null) {
+                outputFileName = "Notara-${abi}.apk"
+            } else {
+                outputFileName = "Notara-Universal.apk"
             }
         }
     }

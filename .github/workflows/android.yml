@@ -25,15 +25,13 @@ jobs:
       run: chmod +x gradlew
 
     - name: Build with Gradle
-      run: ./gradlew assembleDebug bundleDebug
+      run: ./gradlew assembleDebug
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: Notara_Artifacts
-        path: |
-          app/build/outputs/apk/debug/
-          app/build/outputs/bundle/debug/
+        path: app/build/outputs/apk/debug/
 
   release:
     needs: build
@@ -51,5 +49,4 @@ jobs:
         with:
           files: |
             **/*.apk
-            **/*.aab
           generate_release_notes: true

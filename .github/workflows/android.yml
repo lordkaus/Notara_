@@ -3,15 +3,14 @@ name: Android Release CI
 on:
   push:
     branches: [ "teste" ]
-    tags: [ 'v*' ]
+    tags: [ 'v*' ] # Gatilho essencial para criar a página de Release
   pull_request:
     branches: [ "teste" ]
-  workflow_dispatch:
+  workflow_dispatch: # Permite rodar manualmente pelo painel do GitHub
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
 
@@ -24,29 +23,35 @@ jobs:
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
+
+    # Gera o APK de produção (Release)
     - name: Build Release APK
       run: ./gradlew assembleRelease
 
+    # Guarda o APK nos artefatos do GitHub (visível no sumário do Action)
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: Notara_Release_APK
+        name: Notara_Release_Build
         path: app/build/outputs/apk/release/*.apk
 
   release:
     needs: build
     runs-on: ubuntu-latest
+    # Só executa este job se você tiver criado uma TAG (ex: git tag v1.0)
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
-      contents: write
+      contents: write # Permissão necessária para criar a página de release
     steps:
       - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: Notara_Release_APK
+          name: Notara_Release_Build
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: "**/*.apk"
           generate_release_notes: true
+          draft: false
+          prerelease: false

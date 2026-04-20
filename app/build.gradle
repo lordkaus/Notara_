@@ -5,20 +5,34 @@ android {
     compileSdk 35
 signingConfigs {
         release {
-            // Buscamos as variáveis. Se não achar, o build falha explicitamente
-            def keystoreFile = System.getenv("RELEASE_STORE_FILE")
-            def storePw = System.getenv("RELEASE_STORE_PASSWORD")
-            def keyAl = System.getenv("RELEASE_KEY_ALIAS")
-            def keyPw = System.getenv("RELEASE_KEY_PASSWORD")
+            // Definimos as variáveis
+            def propStoreFile = System.getenv("RELEASE_STORE_FILE")
+            def propStorePass = System.getenv("RELEASE_STORE_PASSWORD")
+            def propKeyAlias = System.getenv("RELEASE_KEY_ALIAS")
+            def propKeyPass = System.getenv("RELEASE_KEY_PASSWORD")
 
-            if (keystoreFile != null && storePw != null) {
-                storeFile file(keystoreFile)
-                storePassword storePw
-                keyAlias keyAl
-                keyPassword keyPw
+            // Só configura se as variáveis essenciais existirem
+            if (propStoreFile != null && propStorePass != null) {
+                storeFile file(propStoreFile)
+                storePassword propStorePass
+                keyAlias propKeyAlias
+                keyPassword propKeyPass
             } else {
-                storeFile file("debug.keystore") 
+                // Se falhar, ele usa a de debug para não quebrar o build local, 
+                // mas avisa no console do GitHub
+                println("WARNING: Signing variables not found! APK will be UNSIGNED.")
+                storeFile file("debug.keystore")
             }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            // VITAL: Esta linha precisa estar exatamente aqui!
+            signingConfig signingConfigs.release 
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
     defaultConfig {

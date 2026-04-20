@@ -3,14 +3,15 @@ name: Android Release CI
 on:
   push:
     branches: [ "teste" ]
-    tags: [ 'v*' ] # Gatilho essencial para criar a página de Release
+    tags: [ 'v*' ] # Gatilho para publicação oficial
   pull_request:
     branches: [ "teste" ]
-  workflow_dispatch: # Permite rodar manualmente pelo painel do GitHub
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v4
 
@@ -24,29 +25,39 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    # Gera o APK de produção (Release)
+    # 1. RECONSTRUÇÃO DA CHAVE (DECODE)
+    # Transforma o texto do Secret de volta no arquivo .jks físico
+    - name: Decode Keystore
+      run: |
+        echo "${{ secrets.KEYSTORE }}" | base64 --decode > app/release-key.jks
+
+    # 2. BUILD E ASSINATURA
+    # O Gradle usa as variáveis de ambiente para assinar o APK durante o build
     - name: Build Release APK
       run: ./gradlew assembleRelease
+      env:
+        RELEASE_STORE_FILE: release-key.jks
+        RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+        RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+        RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
-    # Guarda o APK nos artefatos do GitHub (visível no sumário do Action)
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: Notara_Release_Build
+        name: Notara_Release_APK
         path: app/build/outputs/apk/release/*.apk
 
   release:
     needs: build
     runs-on: ubuntu-latest
-    # Só executa este job se você tiver criado uma TAG (ex: git tag v1.0)
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
-      contents: write # Permissão necessária para criar a página de release
+      contents: write
     steps:
       - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: Notara_Release_Build
+          name: Notara_Release_APK
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

@@ -5,11 +5,20 @@ android {
     compileSdk 35
 signingConfigs {
         release {
-            // Tenta ler as variáveis do GitHub Actions, se não existirem, usa valores de debug
-            storeFile = file(System.getenv("RELEASE_STORE_FILE") ?: "debug.keystore")
-            storePassword = System.getenv("RELEASE_STORE_PASSWORD")
-            keyAlias = System.getenv("RELEASE_KEY_ALIAS")
-            keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            // Buscamos as variáveis. Se não achar, o build falha explicitamente
+            def keystoreFile = System.getenv("RELEASE_STORE_FILE")
+            def storePw = System.getenv("RELEASE_STORE_PASSWORD")
+            def keyAl = System.getenv("RELEASE_KEY_ALIAS")
+            def keyPw = System.getenv("RELEASE_KEY_PASSWORD")
+
+            if (keystoreFile != null && storePw != null) {
+                storeFile file(keystoreFile)
+                storePassword storePw
+                keyAlias keyAl
+                keyPassword keyPw
+            } else {
+                storeFile file("debug.keystore") 
+            }
         }
     }
     defaultConfig {

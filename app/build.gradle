@@ -3,7 +3,15 @@ apply plugin: 'com.android.application'
 android {
     namespace 'com.notara'
     compileSdk 35
-
+signingConfigs {
+        release {
+            // Tenta ler as variáveis do GitHub Actions, se não existirem, usa valores de debug
+            storeFile = file(System.getenv("RELEASE_STORE_FILE") ?: "debug.keystore")
+            storePassword = System.getenv("RELEASE_STORE_PASSWORD")
+            keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+            keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+        }
+    }
     defaultConfig {
         applicationId "com.notara"
         minSdk 21

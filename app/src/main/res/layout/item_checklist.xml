@@ -29,7 +29,7 @@
             android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:background="@null"
-            android:hint="Item da lista"
+            android:hint="@string/checklist_item_hint"
             android:inputType="textCapSentences"
             android:textColor="?attr/colorOnSurface"
             android:textSize="16sp"
@@ -41,6 +41,7 @@
             android:layout_height="32dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_close"
+            android:contentDescription="@null"
             app:tint="?attr/colorError" />
 
     </LinearLayout>

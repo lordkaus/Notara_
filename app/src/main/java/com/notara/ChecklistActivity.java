@@ -1,6 +1,24 @@
+/*
+ * Copyright (c) 1996 lordkaus
+ * This file is part of Notara_.
+ *
+ * Notara_ is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Notara_ is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Notara_. If not, see <https://www.gnu.org/licenses/>.
+ */
 package com.notara;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.content.Context;
@@ -32,6 +50,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.notara.databinding.ActivityChecklistBinding;
@@ -60,34 +79,51 @@ public class ChecklistActivity extends AppCompatActivity {
 
     private SettingsManager settings;
     private boolean isUnlocked = false;
+    private boolean isPreviewMode = false;
+    private android.view.GestureDetector gestureDetector;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         settings = new SettingsManager(this);
         securityManager = new SecurityManager(this);
         super.onCreate(savedInstanceState);
-        // Aplica o tema
+
         int theme = settings.getTheme();
-        if (theme == 0) { // Apenas Light força ícones pretos
+        WindowInsetsControllerCompat windowInsetsController = new WindowInsetsControllerCompat(getWindow(), getWindow().getDecorView());
+
+        if (theme == 0 || theme == 3) {
             setTheme(R.style.Theme_Notara);
-            getWindow().getDecorView().setSystemUiVisibility(android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+            windowInsetsController.setAppearanceLightStatusBars(true);
         } else {
             setTheme(theme == 1 ? R.style.Theme_Notara_Pantera : R.style.Theme_Notara);
-            getWindow().getDecorView().setSystemUiVisibility(android.view.View.SYSTEM_UI_FLAG_VISIBLE);
+            windowInsetsController.setAppearanceLightStatusBars(false);
         }
 
         binding = ActivityChecklistBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        isPreviewMode = getIntent().getBooleanExtra("PREVIEW_MODE", false);
+
+        // Detector de duplo clique
+        gestureDetector = new android.view.GestureDetector(this, new android.view.GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onDoubleTap(android.view.MotionEvent e) {
+                if (isPreviewMode) {
+                    enableEditMode();
+                    return true;
+                }
+                return false;
+            }
+        });
+
         viewModel = new ViewModelProvider(this).get(NoteViewModel.class);
         noteId = getIntent().getIntExtra("NOTE_ID", -1);
-        
-        // Se for uma nova checklist vinda do calendário, pega o tempo sugerido
+
         if (noteId == -1) {
             reminderTime = getIntent().getLongExtra("INITIAL_REMINDER_TIME", 0);
-        }
-
-        if (noteId != -1) {
+            isUnlocked = true;
+            enableEditMode();
+        } else {
             currentNote = viewModel.getNote(noteId);
             if (currentNote != null) {
                 binding.etChecklistTitle.setText(currentNote.title);
@@ -102,15 +138,26 @@ public class ChecklistActivity extends AppCompatActivity {
                     requestUnlock();
                 } else {
                     isUnlocked = true;
+                    enablePreviewMode();
                 }
             }
         }
+
+        binding.getRoot().post(() -> {
+            if (isPreviewMode) hideKeyboard();
+        });
 
         requestPermissions();
         updateColorIndicator();
         setupDate();
         setupRecyclerView();
         setupListeners();
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+        gestureDetector.onTouchEvent(ev);
+        return super.dispatchTouchEvent(ev);
     }
 
     private void lockContent() {
@@ -129,24 +176,65 @@ public class ChecklistActivity extends AppCompatActivity {
             try {
                 String decrypted = SecurityCore.decrypt(currentNote.content);
                 parseContent(decrypted);
-                adapter.notifyDataSetChanged();
             } catch (Exception e) {
                 Toast.makeText(this, "Erro ao descriptografar lista.", Toast.LENGTH_SHORT).show();
             }
         }
-        binding.rvChecklist.setVisibility(View.VISIBLE);
-        binding.tilNewItem.setVisibility(View.VISIBLE);
-        binding.btnChecklistColorPicker.setVisibility(View.VISIBLE);
-        binding.btnChecklistReminder.setVisibility(View.VISIBLE);
-        binding.btnChecklistAlarm.setVisibility(View.VISIBLE);
-        binding.btnConvertToText.setVisibility(View.VISIBLE);
-        binding.btnSaveChecklist.setVisibility(View.VISIBLE);
+        
+        if (noteId != -1) {
+            enablePreviewMode();
+        } else {
+            enableEditMode();
+        }
+    }
+
+    private void updateUIState() {
+        boolean shouldShowControls = !isPreviewMode && isUnlocked;
+        
+        binding.bottomAppBar.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
+        binding.btnSaveChecklist.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
+        binding.tilNewItem.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
+        
+        if (isUnlocked) {
+            binding.rvChecklist.setVisibility(View.VISIBLE);
+            binding.etChecklistTitle.setVisibility(View.VISIBLE);
+        }
+
+        binding.etChecklistTitle.setFocusable(shouldShowControls);
+        binding.etChecklistTitle.setFocusableInTouchMode(shouldShowControls);
+        
+        if (isPreviewMode) {
+            hideKeyboard();
+        }
+        
+        if (adapter != null) {
+            adapter.notifyItemRangeChanged(0, items.size());
+        }
+    }
+
+    private void hideKeyboard() {
+        View view = this.getCurrentFocus();
+        if (view != null) {
+            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
+    }
+
+    private void enablePreviewMode() {
+        isPreviewMode = true;
+        updateUIState();
+    }
+
+    private void enableEditMode() {
+        isPreviewMode = false;
+        updateUIState();
+        binding.etChecklistTitle.requestFocus();
     }
 
     private void requestUnlock() {
-        securityManager.authenticate(this, 
-            "Lista Trancada", 
-            "Autentique-se para ver o conteúdo", 
+        securityManager.authenticate(this,
+            "Lista Trancada",
+            "Autentique-se para ver o conteúdo",
             new SecurityManager.AuthCallback() {
                 @Override
                 public void onAuthenticated() {
@@ -179,36 +267,33 @@ public class ChecklistActivity extends AppCompatActivity {
             modified.setTimeInMillis(System.currentTimeMillis());
         }
 
-        // Informação de Agendamento (Se houver)
         if (reminderTime > 0) {
             Calendar reminder = Calendar.getInstance();
             reminder.setTimeInMillis(reminderTime);
-            
+
             String type = (alertType == 1) ? "⏰ Alarme" : "🔔 Lembrete";
             sb.append(type);
-            
-            // Recorrência
+
             String[] recurrences = {"", " (Diário)", " (Semanal)", " (Mensal)", " (Anual)", " (Pers.)"};
             if (recurrenceType > 0 && recurrenceType < recurrences.length) {
                 sb.append(recurrences[recurrenceType]);
             }
-            
+
             sb.append(": ");
-            
-            // Formata Data (Ano opcional)
+
             String pattern = (reminder.get(Calendar.YEAR) == now.get(Calendar.YEAR)) ? "dd/MM" : "dd/MM/yyyy";
             String timeFormat = settings.is24HourFormat() ? "HH:mm" : "hh:mm a";
             SimpleDateFormat sdf = new SimpleDateFormat(pattern + " 'às' " + timeFormat, Locale.getDefault());
             sb.append(sdf.format(reminder.getTime()));
-            
+
             binding.tvChecklistDate.setText(sb.toString());
             binding.tvChecklistDate.setTextColor(alertType == 1 ? Color.parseColor("#F44336") : Color.parseColor("#4DB6AC"));
         } else {
-            // Apenas Última Modificação
             String pattern = (modified.get(Calendar.YEAR) == now.get(Calendar.YEAR)) ? "dd/MM" : "dd/MM/yyyy";
             String timeFormat = settings.is24HourFormat() ? "HH:mm" : "hh:mm a";
             SimpleDateFormat sdf = new SimpleDateFormat(pattern + " 'às' " + timeFormat, Locale.getDefault());
-            binding.tvChecklistDate.setText("Editado em " + sdf.format(modified.getTime()));
+            String dateFormatted = sdf.format(modified.getTime());
+            binding.tvChecklistDate.setText(getString(R.string.edited_at, dateFormatted));
             binding.tvChecklistDate.setTextColor(Color.GRAY);
         }
     }
@@ -218,10 +303,9 @@ public class ChecklistActivity extends AppCompatActivity {
         adapter = new CheckAdapter();
         binding.rvChecklist.setAdapter(adapter);
 
-        // Reintegração do Drag & Drop (Segurar e Soltar para organizar)
         androidx.recyclerview.widget.ItemTouchHelper.Callback callback = new androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(
                 androidx.recyclerview.widget.ItemTouchHelper.UP | androidx.recyclerview.widget.ItemTouchHelper.DOWN, 0) {
-            
+
             @Override
             public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
                 int fromPos = viewHolder.getAdapterPosition();
@@ -241,16 +325,13 @@ public class ChecklistActivity extends AppCompatActivity {
             public void onSelectedChanged(RecyclerView.ViewHolder viewHolder, int actionState) {
                 super.onSelectedChanged(viewHolder, actionState);
                 if (actionState == androidx.recyclerview.widget.ItemTouchHelper.ACTION_STATE_DRAG) {
-                    // Feedback visual agressivo: destaca o item "levitando" ele
                     viewHolder.itemView.setScaleX(1.05f);
                     viewHolder.itemView.setScaleY(1.05f);
-                    
+
                     if (viewHolder.itemView instanceof com.google.android.material.card.MaterialCardView) {
                         com.google.android.material.card.MaterialCardView card = (com.google.android.material.card.MaterialCardView) viewHolder.itemView;
-                        card.setCardBackgroundColor(Color.parseColor("#4DB6AC")); // Cor primária como destaque
+                        card.setCardBackgroundColor(Color.parseColor("#4DB6AC"));
                         card.setCardElevation(20f);
-                        // Muda a cor dos textos internos para contraste
-                        // (Opcional, mas melhora muito o feedback)
                     }
                 }
             }
@@ -260,10 +341,10 @@ public class ChecklistActivity extends AppCompatActivity {
                 super.clearView(recyclerView, viewHolder);
                 viewHolder.itemView.setScaleX(1.0f);
                 viewHolder.itemView.setScaleY(1.0f);
-                
+
                 if (viewHolder.itemView instanceof com.google.android.material.card.MaterialCardView) {
                     com.google.android.material.card.MaterialCardView card = (com.google.android.material.card.MaterialCardView) viewHolder.itemView;
-                    card.setCardBackgroundColor(Color.TRANSPARENT); // Volta ao normal
+                    card.setCardBackgroundColor(Color.TRANSPARENT);
                     card.setCardElevation(0f);
                 }
             }
@@ -303,41 +384,41 @@ public class ChecklistActivity extends AppCompatActivity {
             return;
         }
 
-        // PASSO 1: Data
         com.google.android.material.datepicker.MaterialDatePicker<Long> datePicker = com.google.android.material.datepicker.MaterialDatePicker.Builder.datePicker()
                 .setTitleText("1. Escolha a Data")
                 .setSelection(reminderTime > 0 ? reminderTime : com.google.android.material.datepicker.MaterialDatePicker.todayInUtcMilliseconds())
                 .build();
-    datePicker.addOnPositiveButtonClickListener(selection -> {
-        // Converte a seleção UTC para LocalDate pura para evitar o deslocamento do fuso
-        java.time.LocalDate pickedDate = java.time.Instant.ofEpochMilli(selection)
-                .atZone(java.time.ZoneId.of("UTC"))
-                .toLocalDate();
 
-        Calendar cal = Calendar.getInstance();
-        cal.set(pickedDate.getYear(), pickedDate.getMonthValue() - 1, pickedDate.getDayOfMonth());
+        datePicker.addOnPositiveButtonClickListener(selection -> {
+            Calendar cal = Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"));
+            cal.setTimeInMillis(selection);
+            int year = cal.get(Calendar.YEAR);
+            int month = cal.get(Calendar.MONTH);
+            int day = cal.get(Calendar.DAY_OF_MONTH);
 
-        // PASSO 2: Hora
-        int initialHour = 9, initialMinute = 0;
-        if (reminderTime > 0) {
-            Calendar current = Calendar.getInstance(); current.setTimeInMillis(reminderTime);
-            initialHour = current.get(Calendar.HOUR_OF_DAY); initialMinute = current.get(Calendar.MINUTE);
-        }
+            Calendar localCal = Calendar.getInstance();
+            localCal.set(year, month, day);
 
-        com.google.android.material.timepicker.MaterialTimePicker timePicker = new com.google.android.material.timepicker.MaterialTimePicker.Builder()
-                .setTimeFormat(settings.is24HourFormat() ? com.google.android.material.timepicker.TimeFormat.CLOCK_24H : com.google.android.material.timepicker.TimeFormat.CLOCK_12H)
-                .setHour(initialHour)
-                .setMinute(initialMinute)
-                .setTitleText("2. Escolha o Horário")
-                .build();
+            int initialHour = 9, initialMinute = 0;
+            if (reminderTime > 0) {
+                Calendar current = Calendar.getInstance();
+                current.setTimeInMillis(reminderTime);
+                initialHour = current.get(Calendar.HOUR_OF_DAY);
+                initialMinute = current.get(Calendar.MINUTE);
+            }
+
+            com.google.android.material.timepicker.MaterialTimePicker timePicker = new com.google.android.material.timepicker.MaterialTimePicker.Builder()
+                    .setTimeFormat(settings.is24HourFormat() ? com.google.android.material.timepicker.TimeFormat.CLOCK_24H : com.google.android.material.timepicker.TimeFormat.CLOCK_12H)
+                    .setHour(initialHour)
+                    .setMinute(initialMinute)
+                    .setTitleText("2. Escolha o Horário")
+                    .build();
 
             timePicker.addOnPositiveButtonClickListener(v -> {
-                cal.set(Calendar.HOUR_OF_DAY, timePicker.getHour());
-                cal.set(Calendar.MINUTE, timePicker.getMinute());
-                cal.set(Calendar.SECOND, 0);
-
-                // PASSO 3: Repetição
-                showRecurrenceStep(cal, type);
+                localCal.set(Calendar.HOUR_OF_DAY, timePicker.getHour());
+                localCal.set(Calendar.MINUTE, timePicker.getMinute());
+                localCal.set(Calendar.SECOND, 0);
+                showRecurrenceStep(localCal, type);
             });
 
             timePicker.show(getSupportFragmentManager(), "TIME_PICKER");
@@ -355,8 +436,8 @@ public class ChecklistActivity extends AppCompatActivity {
         com.google.android.material.chip.ChipGroup chipGroup = v.findViewById(R.id.chipGroupDays);
 
         String[] frequencies = {"Diário", "Semanal", "Mensal", "Anual", "Personalizado"};
-        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_list_item_1, frequencies);
-        dropdown.setAdapter(adapter);
+        android.widget.ArrayAdapter<String> adapterRec = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_list_item_1, frequencies);
+        dropdown.setAdapter(adapterRec);
 
         com.google.android.material.chip.Chip[] chips = {
             v.findViewById(R.id.chipDom), v.findViewById(R.id.chipSeg), v.findViewById(R.id.chipTer),
@@ -409,7 +490,7 @@ public class ChecklistActivity extends AppCompatActivity {
                     recurrenceType = 0;
                     recurrenceDays = 0;
                 }
-                
+
                 alertType = type;
                 setupDate();
             })
@@ -477,7 +558,7 @@ public class ChecklistActivity extends AppCompatActivity {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_color_picker, null);
         androidx.recyclerview.widget.RecyclerView rv = dialogView.findViewById(R.id.colorRecyclerView);
         rv.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 4));
-        
+
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
             .setTitle("Escolher Cor")
             .setView(dialogView)
@@ -490,15 +571,15 @@ public class ChecklistActivity extends AppCompatActivity {
             @Override public void onBindViewHolder(@NonNull androidx.recyclerview.widget.RecyclerView.ViewHolder h, int p) {
                 View colorView = h.itemView.findViewById(R.id.colorView);
                 int color = Color.parseColor(EditActivity.noteColors[p]);
-                
+
                 android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
                 shape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
                 shape.setColor(color);
-                
+
                 if (selectedColor == p) {
                     shape.setStroke(6, Color.WHITE);
                 }
-                
+
                 colorView.setBackground(shape);
                 colorView.setOnClickListener(v -> {
                     int pos = h.getBindingAdapterPosition();
@@ -511,7 +592,7 @@ public class ChecklistActivity extends AppCompatActivity {
             }
             @Override public int getItemCount() { return EditActivity.noteColors.length; }
         });
-        
+
         dialog.show();
     }
 
@@ -519,8 +600,7 @@ public class ChecklistActivity extends AppCompatActivity {
         int color = Color.parseColor(EditActivity.noteColors[selectedColor % EditActivity.noteColors.length]);
         binding.topColorIndicator.setBackgroundColor(color);
         binding.btnSaveChecklist.setBackgroundColor(color);
-        
-        // Atualiza o pequeno círculo de preview na barra inferior com borda sofisticada
+
         android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
         shape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
         shape.setColor(color);
@@ -541,23 +621,42 @@ public class ChecklistActivity extends AppCompatActivity {
 
     class CheckAdapter extends RecyclerView.Adapter<CheckAdapter.VH> {
         @NonNull @Override public VH onCreateViewHolder(@NonNull ViewGroup p, int t) { return new VH(ItemChecklistBinding.inflate(LayoutInflater.from(p.getContext()), p, false)); }
-        
+
+        @SuppressLint("ClickableViewAccessibility")
         @Override public void onBindViewHolder(@NonNull VH h, int p) {
             CheckItem i = items.get(p);
-            
+
             h.binding.cbItem.setOnCheckedChangeListener(null);
             if (h.watcher != null) h.binding.etItemName.removeTextChangedListener(h.watcher);
 
             h.binding.cbItem.setChecked(i.checked);
-            
-            // Define o texto e aplica o efeito logo no início
             applyTextWithEffect(h, i.name, i.checked);
+
+            // Controle de edição baseado no modo Preview
+            h.binding.etItemName.setFocusable(!isPreviewMode);
+            h.binding.etItemName.setFocusableInTouchMode(!isPreviewMode);
+            h.binding.btnRemoveItem.setVisibility(isPreviewMode ? View.GONE : View.VISIBLE);
+            
+            // Permite detectar clique duplo para editar mesmo sobre o item
+            h.itemView.setOnTouchListener((v, event) -> {
+                gestureDetector.onTouchEvent(event);
+                if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
+                    v.performClick();
+                }
+                return false;
+            });
+            h.binding.etItemName.setOnTouchListener((v, event) -> {
+                gestureDetector.onTouchEvent(event);
+                if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
+                    v.performClick();
+                }
+                return isPreviewMode; // Consome o toque no preview para não abrir teclado, mas permite clique duplo
+            });
 
             h.watcher = new android.text.TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-                @Override public void onTextChanged(CharSequence s, int start, int before, int count) { 
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
                     i.name = s.toString();
-                    // Re-aplica o efeito se necessário enquanto digita, sem disparar recursão
                     if (i.checked) {
                         applyStrikethroughWhileTyping(h, s);
                     }
@@ -570,7 +669,7 @@ public class ChecklistActivity extends AppCompatActivity {
                 i.checked = checked;
                 applyTextWithEffect(h, i.name, checked);
             });
-            
+
             h.binding.btnRemoveItem.setOnClickListener(v -> {
                 int pos = h.getAdapterPosition();
                 if (pos != RecyclerView.NO_POSITION) {
@@ -582,7 +681,7 @@ public class ChecklistActivity extends AppCompatActivity {
 
         private void applyTextWithEffect(VH h, String text, boolean checked) {
             if (h.watcher != null) h.binding.etItemName.removeTextChangedListener(h.watcher);
-            
+
             if (checked && text != null && !text.isEmpty()) {
                 SpannableString spannable = new SpannableString(text);
                 spannable.setSpan(new StrikethroughSpan(), 0, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -594,24 +693,20 @@ public class ChecklistActivity extends AppCompatActivity {
                 h.binding.etItemName.setAlpha(1.0f);
                 h.binding.etItemName.setPaintFlags(h.binding.etItemName.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
             }
-            
+
             if (h.watcher != null) h.binding.etItemName.addTextChangedListener(h.watcher);
         }
 
         private void applyStrikethroughWhileTyping(VH h, CharSequence s) {
-            // Evita disparar o watcher novamente
             h.binding.etItemName.removeTextChangedListener(h.watcher);
-            
             int selectionStart = h.binding.etItemName.getSelectionStart();
             int selectionEnd = h.binding.etItemName.getSelectionEnd();
-            
+
             SpannableString spannable = new SpannableString(s);
             spannable.setSpan(new StrikethroughSpan(), 0, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             h.binding.etItemName.setText(spannable);
-            
-            // Restaura a posição do cursor
             h.binding.etItemName.setSelection(selectionStart, selectionEnd);
-            
+
             h.binding.etItemName.addTextChangedListener(h.watcher);
         }
 

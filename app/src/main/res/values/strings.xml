@@ -1,15 +1,82 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Notara_</string>
-    
-    <string-array name="recurrence_options">
-        <item>Sem Repetição</item>
-        <item>Diário</item>
-        <item>Semanal</item>
-        <item>Mensal</item>
-        <item>Anual</item>
-    </string-array>
     <string name="recurring_cycles">Ciclos de Repetição</string>
     <string name="no_cycles_found">Nenhum ciclo ativo encontrado.</string>
     <string name="delete_cycle_title">Excluir Ciclo?</string>
-    <string name="delete_cycle_msg">Isso removerá a nota original e todas as suas repetições futuras.</string>
+    <string name="delete_cycle_msg">
+        <![CDATA[Tem certeza que deseja excluir este ciclo de repetição?]]>
+    </string>
+    <string name="notes_on_date">Notas de %s</string>
+    <string name="edited_at">Editado em %s</string>
+    <string name="locked_note_title">* %s</string>
+    <string name="locked_note_content">Conteúdo Protegido</string>
+    <string name="transparency_value">%d%%</string>
+    <string name="stop_alarm_open">PARAR ALARME E ABRIR</string>
+    <string name="day_sun">D</string>
+    <string name="day_mon">S</string>
+    <string name="day_tue">T</string>
+    <string name="day_wed">Q</string>
+    <string name="day_thu">Q</string>
+    <string name="day_fri">S</string>
+    <string name="day_sat">S</string>
+    <string name="today_notes">Notas de hoje</string>
+    <string name="checklist_title_hint">Título da Lista</string>
+    <string name="date_label">Data</string>
+    <string name="add_item_hint">Adicionar um novo item&#8230;</string>
+    <string name="note_title_hint">Título</string>
+    <string name="note_content_hint">Comece a escrever&#8230;</string>
+    <string name="search_notes_hint">Pesquisar notas&#8230;</string>
+    <string name="search_hint">Pesquisar&#8230;</string>
+    <string name="note_content_preview_placeholder">Conteúdo da nota&#8230;</string>
+    <string name="no_notes_found">Nenhuma nota encontrada</string>
+    <string name="new_note">Nova Nota</string>
+    <string name="display_and_grid">Exibição e Grade</string>
+    <string name="grid_columns">Colunas na Grade</string>
+    <string name="default_grid_columns">2</string>
+    <string name="uniform_note_size">Tamanho de Notas Uniforme</string>
+    <string name="use_24h_format">Usar Formato 24h</string>
+    <string name="personalization">Personalização</string>
+    <string name="theme_light">Light Theme</string>
+    <string name="theme_pantera">Pantera OLED Black</string>
+    <string name="theme_material_you_black">Material You Black</string>
+    <string name="theme_material_you_light">Material You Light</string>
+    <string name="widget_transparency">Transparência de Widgets</string>
+    <string name="default_transparency">100%</string>
+    <string name="colors_in_notifications">Cores em Notificações</string>
+    <string name="colors_in_alarms">Cores em Alarmes</string>
+    <string name="note_style">Estilo das Notas</string>
+    <string name="style_label_default">Etiqueta (Padrão)</string>
+    <string name="style_pastel_soft">Pastel (Suave)</string>
+    <string name="style_solid_vibrant">Solid (Vibrante)</string>
+    <string name="app_background">Fundo do Aplicativo</string>
+    <string name="bg_default">Padrão</string>
+    <string name="bg_mesh">Malha (Mesh)</string>
+    <string name="bg_geometric">Geométrico</string>
+    <string name="privacy_and_security">Privacidade e Segurança</string>
+    <string name="device_biometrics">Biometria do Dispositivo</string>
+    <string name="app_password">Senha do Aplicativo</string>
+    <string name="planning_and_repetitions">Planejamento e Repetições</string>
+    <string name="view_recurring_notes">Ver Notas e Listas Recorrentes</string>
+    <string name="management">Gerenciamento</string>
+    <string name="manage_trash">Gerenciar Lixeira</string>
+    <string name="clear_all_data">Limpar Todos os Dados</string>
+    <string name="app_tagline">Produtividade e Segurança</string>
+    <string name="app_version_label">v2.1 Build 2026.04</string>
+    <string name="no_notes_available">Nenhuma nota disponível</string>
+    <string name="title_placeholder">Título</string>
+    <string name="setup_recurrence">Configurar Repetição</string>
+    <string name="enable_recurrence">Ativar Repetição</string>
+    <string name="repeat_on_days">Repetir nos dias:</string>
+    <string name="empty_trash">Esvaziar Lixeira</string>
+    <string name="trash_is_empty">A lixeira está vazia</string>
+    <string name="frequency">Frequência</string>
+    <string name="day_full_sun">Dom</string>
+    <string name="day_full_mon">Seg</string>
+    <string name="day_full_tue">Ter</string>
+    <string name="day_full_wed">Qua</string>
+    <string name="day_full_thu">Qui</string>
+    <string name="day_full_fri">Sex</string>
+    <string name="day_full_sat">Sáb</string>
+    <string name="day_placeholder">1</string>
+    <string name="checklist_item_hint">Item da lista</string>
 </resources>

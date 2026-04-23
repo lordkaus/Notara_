@@ -38,7 +38,7 @@
                     android:layout_toStartOf="@+id/ivPin"
                     android:ellipsize="end"
                     android:maxLines="2"
-                    android:text="Título"
+                    android:text="@string/title_placeholder"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="16sp"
                     android:textStyle="bold" />
@@ -50,6 +50,7 @@
                     android:layout_alignParentEnd="true"
                     android:src="@drawable/ic_star"
                     android:visibility="gone"
+                    android:contentDescription="@null"
                     app:tint="?attr/colorPrimary" />
             </RelativeLayout>
 
@@ -60,7 +61,7 @@
                 android:layout_marginTop="8dp"
                 android:ellipsize="end"
                 android:maxLines="8"
-                android:text="Conteúdo da nota..."
+                android:text="@string/note_content_preview_placeholder"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="14sp" />
         </LinearLayout>

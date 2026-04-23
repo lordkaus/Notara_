@@ -1,58 +1,107 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Permissões Críticas para Android 15 -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-sdk
+        android:minSdkVersion="23"
+        tools:overrideLibrary="androidx.lifecycle.viewmodel, androidx.lifecycle.viewmodel.savedstate, androidx.lifecycle.livedata, androidx.lifecycle.livedata.core, androidx.lifecycle.runtime, androidx.savedstate, androidx.lifecycle.process, androidx.lifecycle.livedata.core.ktx" />
+
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
-    <application 
+    <application
         android:name=".NotesApp"
-        android:label="@string/app_name" 
+        android:label="@string/app_name"
         android:theme="@style/Theme.Notara"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true">
-        
-        <activity android:name=".MainActivity" android:exported="true">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter android:label="Abrir com Notara">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:pathPattern=".*\\.savage" />
+            </intent-filter>
+            <intent-filter android:label="Abrir com Notara">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="text/plain" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:pathPattern=".*\\.txt" />
+            </intent-filter>
         </activity>
-        
-        <activity android:name=".ChecklistActivity" android:windowSoftInputMode="adjustPan" />
-        <activity android:name=".EditActivity" android:windowSoftInputMode="adjustPan" />
-        <activity android:name=".SettingsActivity" android:label="Configurações" />
-        <activity android:name=".CalendarActivity" android:label="Calendário" />
-        <activity android:name=".TrashActivity" android:label="Lixeira" />
-        
-        <!-- Activity do Alarme em Tela Cheia -->
-        <activity android:name=".AlarmActivity" 
-            android:showOnLockScreen="true" 
+
+        <activity
+            android:name=".ChecklistActivity"
+            android:windowSoftInputMode="adjustPan" />
+        <activity
+            android:name=".EditActivity"
+            android:windowSoftInputMode="adjustPan" />
+        <activity
+            android:name=".SettingsActivity"
+            android:label="Configurações" />
+        <activity
+            android:name=".CalendarActivity"
+            android:label="Calendário" />
+        <activity
+            android:name=".TrashActivity"
+            android:label="Lixeira" />
+
+        <activity
+            android:name=".AlarmActivity"
+            android:showOnLockScreen="true"
             android:turnScreenOn="true"
+            tools:ignore="UnusedAttribute"
             android:launchMode="singleInstance"
             android:excludeFromRecents="true" />
 
-        <receiver android:name=".AlarmReceiver" android:exported="false">
+        <receiver
+            android:name=".AlarmReceiver"
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
-        
-        <receiver android:name=".BootReceiver" android:exported="true">
+
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
 
-        <!-- Widgets para Nota/Memo -->
-        <receiver android:name=".widget.NoteWidgetProvider" android:exported="false">
+        <receiver
+            android:name=".widget.NoteWidgetProvider"
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.notara.ACTION_WIDGET_CLICK" />
@@ -60,39 +109,48 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/note_widget_info_1x1" />
-        </receiver>
+            </receiver>
 
-        <receiver android:name=".widget.NoteWidgetProvider1x2" android:exported="false">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.notara.ACTION_WIDGET_CLICK" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/note_widget_info_1x2" />
-        </receiver>
+            <receiver
+                android:name=".widget.NoteWidgetProvider1x2"
+                android:exported="false">
+                <intent-filter>
+                    <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                    <action android:name="com.notara.ACTION_WIDGET_CLICK" />
+                </intent-filter>
+                <meta-data
+                    android:name="android.appwidget.provider"
+                    android:resource="@xml/note_widget_info_1x2" />
+                </receiver>
 
-        <receiver android:name=".widget.NoteWidgetProvider2x2" android:exported="false">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.notara.ACTION_WIDGET_CLICK" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/note_widget_info_2x2" />
-        </receiver>
+                <receiver
+                    android:name=".widget.NoteWidgetProvider2x2"
+                    android:exported="false">
+                    <intent-filter>
+                        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                        <action android:name="com.notara.ACTION_WIDGET_CLICK" />
+                    </intent-filter>
+                    <meta-data
+                        android:name="android.appwidget.provider"
+                        android:resource="@xml/note_widget_info_2x2" />
+                    </receiver>
 
-        <activity android:name=".widget.WidgetConfigActivity" android:exported="true" android:theme="@style/Theme.Notara">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
-            </intent-filter>
-        </activity>
+                    <activity
+                        android:name=".widget.WidgetConfigActivity"
+                        android:exported="true"
+                        android:theme="@style/Theme.Notara">
+                        <intent-filter>
+                            <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+                        </intent-filter>
+                    </activity>
 
-        <service android:name=".widget.NoteWidgetService" 
-            android:permission="android.permission.BIND_REMOTEVIEWS" />
+                    <service
+                        android:name=".widget.NoteWidgetService"
+                        android:permission="android.permission.BIND_REMOTEVIEWS" />
 
-        <service android:name=".widget.AllNotesWidgetService" 
-            android:permission="android.permission.BIND_REMOTEVIEWS" />
+                    <service
+                        android:name=".widget.AllNotesWidgetService"
+                        android:permission="android.permission.BIND_REMOTEVIEWS" />
 
-    </application>
-</manifest>
+                    </application>
+                </manifest>

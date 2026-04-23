@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground">
+    android:fitsSystemWindows="true"
+    android:background="?android:attr/colorBackground"
+    tools:ignore="Overdraw">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -23,7 +26,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Janeiro 2024"
+                tools:text="Janeiro 2024"
                 android:textSize="20sp"
                 android:textStyle="bold" />
 
@@ -33,6 +36,7 @@
                 android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_chevron_left"
+                android:contentDescription="@null"
                 app:tint="?attr/colorPrimary" />
 
             <ImageButton
@@ -41,6 +45,7 @@
                 android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_chevron_right"
+                android:contentDescription="@null"
                 app:tint="?attr/colorPrimary" />
 
             <ImageButton
@@ -49,6 +54,7 @@
                 android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_notifications"
+                android:contentDescription="@null"
                 app:tint="?attr/colorPrimary" />
         </LinearLayout>
 
@@ -58,13 +64,13 @@
             android:columnCount="7"
             android:layout_marginBottom="8dp">
             <!-- Weekday headers will be added here or fixed in XML -->
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:gravity="center" android:text="D" android:textStyle="bold" />
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:gravity="center" android:text="S" android:textStyle="bold" />
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:gravity="center" android:text="T" android:textStyle="bold" />
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:gravity="center" android:text="Q" android:textStyle="bold" />
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:gravity="center" android:text="Q" android:textStyle="bold" />
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:gravity="center" android:text="S" android:textStyle="bold" />
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:gravity="center" android:text="S" android:textStyle="bold" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:gravity="center" android:text="@string/day_sun" android:textStyle="bold" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:gravity="center" android:text="@string/day_mon" android:textStyle="bold" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:gravity="center" android:text="@string/day_tue" android:textStyle="bold" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:gravity="center" android:text="@string/day_wed" android:textStyle="bold" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:gravity="center" android:text="@string/day_thu" android:textStyle="bold" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:gravity="center" android:text="@string/day_fri" android:textStyle="bold" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:gravity="center" android:text="@string/day_sat" android:textStyle="bold" />
         </GridLayout>
 
         <androidx.recyclerview.widget.RecyclerView
@@ -79,7 +85,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:layout_marginBottom="8dp"
-            android:text="Notas de hoje"
+            android:text="@string/today_notes"
             android:textSize="18sp"
             android:textStyle="bold" />
 

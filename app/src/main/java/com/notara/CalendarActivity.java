@@ -2,7 +2,10 @@ package com.notara;
 
 import android.content.Intent;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -28,14 +31,22 @@ public class CalendarActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         SettingsManager settings = new SettingsManager(this);
         int theme = settings.getTheme();
-        if (theme == 0 || theme == 3) {
-            setTheme(R.style.Theme_Notara);
-            getWindow().getDecorView().setSystemUiVisibility(android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+
+        // Define o tema antes do super.onCreate
+        if (theme == 1) {
+            setTheme(R.style.Theme_Notara_Pantera);
         } else {
-            setTheme(theme == 1 ? R.style.Theme_Notara_Pantera : R.style.Theme_Notara);
-            getWindow().getDecorView().setSystemUiVisibility(android.view.View.SYSTEM_UI_FLAG_VISIBLE);
+            setTheme(R.style.Theme_Notara);
         }
-        
+
+        // Gerencia a cor dos ícones da barra de status usando a API do AndroidX
+        WindowInsetsControllerCompat controller = new WindowInsetsControllerCompat(getWindow(), getWindow().getDecorView());
+        if (theme == 0 || theme == 3) {
+            controller.setAppearanceLightStatusBars(true);
+        } else {
+            controller.setAppearanceLightStatusBars(false);
+        }
+
         super.onCreate(savedInstanceState);
         binding = ActivityCalendarBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -43,7 +54,7 @@ public class CalendarActivity extends AppCompatActivity {
         viewModel = new ViewModelProvider(this).get(NoteViewModel.class);
         currentCalendar = Calendar.getInstance();
         selectedDate = Calendar.getInstance();
-        
+
         setupCalendar();
         setupNoteList();
         updateUI();
@@ -137,13 +148,13 @@ public class CalendarActivity extends AppCompatActivity {
     private void updateUI() {
         SimpleDateFormat sdf = new SimpleDateFormat("MMMM yyyy", Locale.getDefault());
         binding.tvMonthYear.setText(sdf.format(currentCalendar.getTime()));
-        
+
         Calendar rangeEndCal = (Calendar) currentCalendar.clone();
         rangeEndCal.set(Calendar.DAY_OF_MONTH, 1);
-        rangeEndCal.add(Calendar.DAY_OF_MONTH, 42); 
-        
+        rangeEndCal.add(Calendar.DAY_OF_MONTH, 42);
+
         allScheduledNotes = viewModel.getScheduledNotesUpTo(rangeEndCal.getTimeInMillis());
-        
+
         dayAdapter.updateDays(prepareCalendarDays());
         updateNoteList();
     }
@@ -155,11 +166,11 @@ public class CalendarActivity extends AppCompatActivity {
             currentCalendar.get(Calendar.MONTH) + 1,
             1
         );
-        
-        int dayOfWeek = firstOfMonth.getDayOfWeek().getValue(); 
+
+        int dayOfWeek = firstOfMonth.getDayOfWeek().getValue();
         int daysBefore = (dayOfWeek % 7);
         java.time.LocalDate startDate = firstOfMonth.minusDays(daysBefore);
-        
+
         java.time.LocalDate today = java.time.LocalDate.now();
         java.time.LocalDate selLocalDate = selectedDate.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
         int currentMonthValue = firstOfMonth.getMonthValue();
@@ -168,7 +179,7 @@ public class CalendarActivity extends AppCompatActivity {
             java.time.LocalDate date = startDate.plusDays(i);
             List<Integer> colors = new ArrayList<>();
             List<Boolean> ghosts = new ArrayList<>();
-            
+
             int count = 0;
             for (DatabaseHelper.Note n : allScheduledNotes) {
                 if (shouldShowOnDay(date, n)) {
@@ -176,7 +187,7 @@ public class CalendarActivity extends AppCompatActivity {
                     String colorHex = EditActivity.noteColors[colorIndex % EditActivity.noteColors.length];
                     colors.add(Color.parseColor(colorHex));
                     ghosts.add(!isSameDay(date, n.getLocalDate()));
-                    
+
                     count++;
                     if (count >= 3) break;
                 }
@@ -197,7 +208,7 @@ public class CalendarActivity extends AppCompatActivity {
     private void updateNoteList() {
         List<DatabaseHelper.Note> dayNotes = new ArrayList<>();
         java.time.LocalDate selDate = selectedDate.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
-        
+
         for (DatabaseHelper.Note n : allScheduledNotes) {
             if (shouldShowOnDay(selDate, n)) {
                 java.time.LocalDate nDate = n.getLocalDate();
@@ -211,7 +222,7 @@ public class CalendarActivity extends AppCompatActivity {
         }
         noteAdapter.setNotes(dayNotes);
         SimpleDateFormat sdf = new SimpleDateFormat("dd 'de' MMMM", Locale.getDefault());
-        binding.tvSelectedDate.setText("Notas de " + sdf.format(selectedDate.getTime()));
+        binding.tvSelectedDate.setText(getString(R.string.notes_on_date, sdf.format(selectedDate.getTime())));
     }
 
     private boolean shouldShowOnDay(java.time.LocalDate gridDate, DatabaseHelper.Note note) {
@@ -219,7 +230,7 @@ public class CalendarActivity extends AppCompatActivity {
         if (gridDate.isBefore(eventDate)) return false;
         if (gridDate.isEqual(eventDate)) return true;
         if (note.recurrenceType == 0) return false;
-        
+
         switch (note.recurrenceType) {
             case 1: return true;
             case 2: return gridDate.getDayOfWeek() == eventDate.getDayOfWeek();

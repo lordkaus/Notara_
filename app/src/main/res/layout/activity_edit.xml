@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    android:background="?android:attr/colorBackground">
+    android:background="?android:attr/colorBackground"
+    tools:ignore="Overdraw">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBar"
@@ -39,7 +41,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@null"
-                android:hint="Título"
+                android:hint="@string/note_title_hint"
                 android:inputType="textCapSentences"
                 android:textColor="?android:attr/textColorPrimary"
                 android:textSize="28sp"
@@ -50,7 +52,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Data"
+                android:text="@string/date_label"
                 android:alpha="0.6"
                 android:textSize="11sp" />
 
@@ -61,7 +63,7 @@
                 android:layout_marginTop="12dp"
                 android:background="@null"
                 android:gravity="top"
-                android:hint="Comece a escrever..."
+                android:hint="@string/note_content_hint"
                 android:importantForAutofill="no"
                 android:inputType="textMultiLine|textCapSentences"
                 android:lineSpacingExtra="12dp"
@@ -113,6 +115,7 @@
                 android:layout_marginStart="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_notifications"
+                android:contentDescription="@null"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
             <ImageButton
@@ -122,6 +125,7 @@
                 android:layout_marginStart="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_alarm"
+                android:contentDescription="@null"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
             <ImageButton
@@ -131,6 +135,7 @@
                 android:layout_marginStart="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_convert"
+                android:contentDescription="@null"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
         </LinearLayout>
@@ -140,6 +145,7 @@
         android:id="@+id/btnSave"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:contentDescription="@null"
         app:layout_anchor="@id/bottomAppBar"
         app:srcCompat="@drawable/ic_save"
         app:tint="?attr/colorOnPrimary"

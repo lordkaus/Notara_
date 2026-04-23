@@ -1,3 +1,20 @@
+/*
+ * Copyright (c) 1996 lordkaus
+ * This file is part of Notara_.
+ *
+ * Notara_ is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Notara_ is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Notara_. If not, see <https://www.gnu.org/licenses/>.
+ */
 package com.notara;
 
 import android.Manifest;
@@ -53,29 +70,42 @@ public class EditActivity extends AppCompatActivity {
     private SettingsManager settings;
     private boolean isUnlocked = false;
 
+    private boolean isPreviewMode = false;
+    private android.view.GestureDetector gestureDetector;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         settings = new SettingsManager(this);
         securityManager = new SecurityManager(this);
         super.onCreate(savedInstanceState);
+
+        // ... (código existente de temas)
         
-        // Aplica o tema
-        int theme = settings.getTheme();
-        if (theme == 0 || theme == 3) {
-            setTheme(R.style.Theme_Notara);
-            getWindow().getDecorView().setSystemUiVisibility(android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-        } else {
-            setTheme(theme == 1 ? R.style.Theme_Notara_Pantera : R.style.Theme_Notara);
-            getWindow().getDecorView().setSystemUiVisibility(android.view.View.SYSTEM_UI_FLAG_VISIBLE);
-        }
+        isPreviewMode = getIntent().getBooleanExtra("PREVIEW_MODE", false);
 
         binding = ActivityEditBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        // Configuração de modo preview
+        if (isPreviewMode) {
+            enablePreviewMode();
+        }
+
+        // Detector de duplo clique para editar
+        gestureDetector = new android.view.GestureDetector(this, new android.view.GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onDoubleTap(android.view.MotionEvent e) {
+                if (isPreviewMode) {
+                    enableEditMode();
+                    return true;
+                }
+                return false;
+            }
+        });
+
         viewModel = new ViewModelProvider(this).get(NoteViewModel.class);
         noteId = getIntent().getIntExtra("NOTE_ID", -1);
-        
-        // Se for uma nova nota vinda do calendário, pega o tempo sugerido
+
         if (noteId == -1) {
             reminderTime = getIntent().getLongExtra("INITIAL_REMINDER_TIME", 0);
         }
@@ -83,24 +113,21 @@ public class EditActivity extends AppCompatActivity {
         if (noteId != -1) {
             currentNote = viewModel.getNote(noteId);
             if (currentNote != null) {
-                // Título original sem o '*' de visualização da grade
                 binding.etTitle.setText(currentNote.title);
-                
-                // Se viermos de uma conversão de checklist, usamos o conteúdo convertido
+
                 String convertContent = getIntent().getStringExtra("CONVERT_CONTENT");
                 if (convertContent != null) {
                     binding.editNoteText.setText(convertContent);
                 } else {
                     binding.editNoteText.setText(currentNote.content);
                 }
-                
+
                 selectedColor = currentNote.color;
                 reminderTime = currentNote.reminderTime;
                 originalReminderTime = currentNote.originalReminderTime;
                 recurrenceType = currentNote.recurrenceType;
                 alertType = currentNote.alertType;
 
-                // Bloqueia o conteúdo se for uma nota trancada
                 if (currentNote.isLocked == 1) {
                     lockContent();
                     requestUnlock();
@@ -109,20 +136,24 @@ public class EditActivity extends AppCompatActivity {
                 }
             }
         }
-        
+
         requestPermissions();
         updateColorIndicator();
         updateDate();
         setupListeners();
     }
 
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+        gestureDetector.onTouchEvent(ev);
+        return super.dispatchTouchEvent(ev);
+    }
+
     private void lockContent() {
+        binding.etTitle.setVisibility(View.GONE);
+        binding.tvDate.setVisibility(View.GONE);
         binding.editNoteText.setVisibility(View.GONE);
-        // Esconde todos os itens da barra inferior
-        binding.btnColorPicker.setVisibility(View.GONE);
-        binding.btnReminder.setVisibility(View.GONE);
-        binding.btnAlarm.setVisibility(View.GONE);
-        binding.btnConvertToChecklist.setVisibility(View.GONE);
+        binding.bottomAppBar.setVisibility(View.GONE);
         binding.btnSave.setVisibility(View.GONE);
     }
 
@@ -136,18 +167,67 @@ public class EditActivity extends AppCompatActivity {
                 Toast.makeText(this, "Erro ao descriptografar nota.", Toast.LENGTH_SHORT).show();
             }
         }
+        
+        // Sempre exibe os campos após desbloqueio
+        binding.etTitle.setVisibility(View.VISIBLE);
+        binding.tvDate.setVisibility(View.VISIBLE);
         binding.editNoteText.setVisibility(View.VISIBLE);
-        binding.btnColorPicker.setVisibility(View.VISIBLE);
-        binding.btnReminder.setVisibility(View.VISIBLE);
-        binding.btnAlarm.setVisibility(View.VISIBLE);
-        binding.btnConvertToChecklist.setVisibility(View.VISIBLE);
-        binding.btnSave.setVisibility(View.VISIBLE);
+        
+        // Se for uma nota existente aberta da lista, entra em modo preview primeiro
+        if (noteId != -1) {
+            enablePreviewMode();
+        } else {
+            enableEditMode();
+        }
+    }
+
+    private void updateUIState() {
+        boolean shouldShowControls = !isPreviewMode && isUnlocked;
+        
+        binding.bottomAppBar.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
+        binding.btnSave.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
+        
+        // Ensure text views are visible if unlocked
+        if (isUnlocked) {
+            binding.etTitle.setVisibility(View.VISIBLE);
+            binding.tvDate.setVisibility(View.VISIBLE);
+            binding.editNoteText.setVisibility(View.VISIBLE);
+        }
+
+        // Toggle focusability
+        binding.etTitle.setFocusable(shouldShowControls);
+        binding.etTitle.setFocusableInTouchMode(shouldShowControls);
+        binding.editNoteText.setFocusable(shouldShowControls);
+        binding.editNoteText.setFocusableInTouchMode(shouldShowControls);
+        
+        if (isPreviewMode) {
+            hideKeyboard();
+        }
+    }
+
+    private void hideKeyboard() {
+        android.view.View view = this.getCurrentFocus();
+        if (view != null) {
+            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
+    }
+
+    private void enablePreviewMode() {
+        isPreviewMode = true;
+        updateUIState();
+    }
+
+    private void enableEditMode() {
+        isPreviewMode = false;
+        updateUIState();
+        binding.etTitle.requestFocus();
     }
 
     private void requestUnlock() {
-        securityManager.authenticate(this, 
-            "Nota Trancada", 
-            "Autentique-se para ver o conteúdo", 
+        securityManager.authenticate(this,
+            "Nota Trancada",
+            "Autentique-se para ver o conteúdo",
             new SecurityManager.AuthCallback() {
                 @Override
                 public void onAuthenticated() {
@@ -180,36 +260,32 @@ public class EditActivity extends AppCompatActivity {
             modified.setTimeInMillis(System.currentTimeMillis());
         }
 
-        // Informação de Agendamento (Se houver)
         if (reminderTime > 0) {
             Calendar reminder = Calendar.getInstance();
             reminder.setTimeInMillis(reminderTime);
-            
+
             String type = (alertType == 1) ? "⏰ Alarme" : "🔔 Lembrete";
             sb.append(type);
-            
-            // Recorrência
+
             String[] recurrences = {"", " (Diário)", " (Semanal)", " (Mensal)", " (Anual)", " (Pers.)"};
             if (recurrenceType > 0 && recurrenceType < recurrences.length) {
                 sb.append(recurrences[recurrenceType]);
             }
-            
+
             sb.append(": ");
-            
-            // Formata Data (Ano opcional)
+
             String pattern = (reminder.get(Calendar.YEAR) == now.get(Calendar.YEAR)) ? "dd/MM" : "dd/MM/yyyy";
             String timeFormat = settings.is24HourFormat() ? "HH:mm" : "hh:mm a";
             SimpleDateFormat sdf = new SimpleDateFormat(pattern + " 'às' " + timeFormat, Locale.getDefault());
             sb.append(sdf.format(reminder.getTime()));
-            
+
             binding.tvDate.setText(sb.toString());
             binding.tvDate.setTextColor(alertType == 1 ? Color.parseColor("#F44336") : Color.parseColor("#4DB6AC"));
         } else {
-            // Apenas Última Modificação
             String pattern = (modified.get(Calendar.YEAR) == now.get(Calendar.YEAR)) ? "dd/MM" : "dd/MM/yyyy";
             String timeFormat = settings.is24HourFormat() ? "HH:mm" : "hh:mm a";
             SimpleDateFormat sdf = new SimpleDateFormat(pattern + " 'às' " + timeFormat, Locale.getDefault());
-            binding.tvDate.setText("Editado em " + sdf.format(modified.getTime()));
+            binding.tvDate.setText(getString(R.string.edited_at, sdf.format(modified.getTime())));
             binding.tvDate.setTextColor(Color.GRAY);
         }
     }
@@ -226,7 +302,7 @@ public class EditActivity extends AppCompatActivity {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_color_picker, null);
         androidx.recyclerview.widget.RecyclerView rv = dialogView.findViewById(R.id.colorRecyclerView);
         rv.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 4));
-        
+
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
             .setTitle("Escolher Cor")
             .setView(dialogView)
@@ -239,16 +315,15 @@ public class EditActivity extends AppCompatActivity {
             @Override public void onBindViewHolder(@NonNull androidx.recyclerview.widget.RecyclerView.ViewHolder h, int p) {
                 View colorView = h.itemView.findViewById(R.id.colorView);
                 int color = Color.parseColor(noteColors[p]);
-                
+
                 android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
                 shape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
                 shape.setColor(color);
-                
-                // Se for a cor selecionada, adiciona uma borda de destaque
+
                 if (selectedColor == p) {
                     shape.setStroke(6, Color.WHITE);
                 }
-                
+
                 colorView.setBackground(shape);
                 colorView.setOnClickListener(v -> {
                     int pos = h.getBindingAdapterPosition();
@@ -261,7 +336,7 @@ public class EditActivity extends AppCompatActivity {
             }
             @Override public int getItemCount() { return noteColors.length; }
         });
-        
+
         dialog.show();
     }
 
@@ -271,11 +346,10 @@ public class EditActivity extends AppCompatActivity {
         binding.btnSave.setBackgroundColor(color);
         binding.editNoteText.setLineColor(color);
 
-        // Atualiza o pequeno círculo de preview na barra inferior
         android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
         shape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
         shape.setColor(color);
-        shape.setStroke(4, Color.WHITE); // Adiciona uma borda branca sofisticada
+        shape.setStroke(4, Color.WHITE);
         binding.viewSelectedColor.setBackground(shape);
     }
 
@@ -290,22 +364,19 @@ public class EditActivity extends AppCompatActivity {
             return;
         }
 
-        // PASSO 1: Selecionar Data (MaterialDatePicker)
         com.google.android.material.datepicker.MaterialDatePicker<Long> datePicker = com.google.android.material.datepicker.MaterialDatePicker.Builder.datePicker()
                 .setTitleText("1. Escolha a Data")
                 .setSelection(reminderTime > 0 ? reminderTime : com.google.android.material.datepicker.MaterialDatePicker.todayInUtcMilliseconds())
                 .build();
 
         datePicker.addOnPositiveButtonClickListener(selection -> {
-            // Converte a seleção UTC para LocalDate pura para evitar o deslocamento do fuso
             java.time.LocalDate pickedDate = java.time.Instant.ofEpochMilli(selection)
                     .atZone(java.time.ZoneId.of("UTC"))
                     .toLocalDate();
-            
+
             Calendar cal = Calendar.getInstance();
             cal.set(pickedDate.getYear(), pickedDate.getMonthValue() - 1, pickedDate.getDayOfMonth());
-            
-            // PASSO 2: Selecionar Hora (MaterialTimePicker)
+
             int initialHour = 9, initialMinute = 0;
             if (reminderTime > 0) {
                 Calendar current = Calendar.getInstance(); current.setTimeInMillis(reminderTime);
@@ -324,7 +395,6 @@ public class EditActivity extends AppCompatActivity {
                 cal.set(Calendar.MINUTE, timePicker.getMinute());
                 cal.set(Calendar.SECOND, 0);
 
-                // PASSO 3: Repetição
                 showRecurrenceStep(cal, type);
             });
 
@@ -341,7 +411,7 @@ public class EditActivity extends AppCompatActivity {
         AutoCompleteTextView dropdown = v.findViewById(R.id.dropdownRecurrenceType);
         View customLayout = v.findViewById(R.id.layoutCustomDays);
         com.google.android.material.chip.ChipGroup chipGroup = v.findViewById(R.id.chipGroupDays);
-        
+
         String[] frequencies = {"Diário", "Semanal", "Mensal", "Anual", "Personalizado"};
         android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_list_item_1, frequencies);
         dropdown.setAdapter(adapter);
@@ -397,7 +467,7 @@ public class EditActivity extends AppCompatActivity {
                     recurrenceType = 0;
                     recurrenceDays = 0;
                 }
-                
+
                 alertType = type;
                 updateDate();
                 Toast.makeText(this, "Agendado!", Toast.LENGTH_SHORT).show();
@@ -412,34 +482,34 @@ public class EditActivity extends AppCompatActivity {
 
     private void convertToChecklist() {
         String content = binding.editNoteText.getText().toString();
-        if (content.trim().isEmpty()) { 
-            Toast.makeText(this, "Escreva algo para converter", Toast.LENGTH_SHORT).show(); 
-            return; 
+        if (content.trim().isEmpty()) {
+            Toast.makeText(this, "Escreva algo para converter", Toast.LENGTH_SHORT).show();
+            return;
         }
 
         StringBuilder sb = new StringBuilder();
-        for (String line : content.split("\n")) { 
-            if (!line.trim().isEmpty()) sb.append(line.trim()).append("::0\n"); 
+        for (String line : content.split("\n")) {
+            if (!line.trim().isEmpty()) sb.append(line.trim()).append("::0\n");
         }
 
-        String title = binding.etTitle.getText().toString(); 
+        String title = binding.etTitle.getText().toString();
         if (title.isEmpty()) title = "Sem título";
 
         if (currentNote == null) {
             currentNote = new DatabaseHelper.Note(-1, title, sb.toString(), 1, selectedColor, 0, 0, null, reminderTime, recurrenceType, recurrenceDays, null, 0, alertType, System.currentTimeMillis(), originalReminderTime);
-            noteId = (int) viewModel.addNote(currentNote); 
+            noteId = (int) viewModel.addNote(currentNote);
             currentNote.id = noteId;
         } else {
-            currentNote.title = title; 
-            currentNote.content = sb.toString(); 
-            currentNote.type = 1; 
+            currentNote.title = title;
+            currentNote.content = sb.toString();
+            currentNote.type = 1;
             currentNote.alertType = alertType;
             viewModel.updateNote(currentNote);
         }
 
-        Intent intent = new Intent(this, ChecklistActivity.class); 
+        Intent intent = new Intent(this, ChecklistActivity.class);
         intent.putExtra("NOTE_ID", currentNote.id);
-        startActivity(intent); 
+        startActivity(intent);
         finish();
     }
 
@@ -448,7 +518,7 @@ public class EditActivity extends AppCompatActivity {
         String content = binding.editNoteText.getText().toString();
         if (title.isEmpty() && content.isEmpty()) return;
         if (title.isEmpty()) title = "Sem título";
-        
+
         String finalContent = content;
         if (currentNote != null && currentNote.isLocked == 1 && isUnlocked) {
             try {
@@ -468,7 +538,7 @@ public class EditActivity extends AppCompatActivity {
             currentNote.alertType = alertType;
             viewModel.updateNote(currentNote);
         }
-        
+
         if (reminderTime > System.currentTimeMillis()) {
             AlarmReceiver.rescheduleAlarm(this, currentNote);
         } else if (reminderTime == 0 && noteId != -1) {

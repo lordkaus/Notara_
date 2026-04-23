@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    android:background="?android:attr/colorBackground">
+    android:background="?android:attr/colorBackground"
+    tools:ignore="Overdraw">
 
     <View 
         android:id="@+id/bgView"
@@ -39,7 +41,7 @@
             <TextView 
                 android:layout_width="match_parent" 
                 android:layout_height="wrap_content"
-                android:text="Exibição e Grade" 
+                android:text="@string/display_and_grid" 
                 android:textColor="?attr/colorPrimary" 
                 android:textSize="13sp"
                 android:textStyle="bold" 
@@ -70,7 +72,9 @@
                             android:id="@+id/labelGrid"
                             android:layout_width="wrap_content" 
                             android:layout_height="wrap_content" 
-                            android:text="Colunas na Grade"
+                            android:layout_alignParentStart="true"
+                            android:layout_toStartOf="@+id/tvGridValue"
+                            android:text="@string/grid_columns"
                             android:textSize="16sp"
                             android:textColor="?attr/colorOnSurface" />
                         <TextView 
@@ -78,7 +82,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_alignParentEnd="true"
-                            android:text="2"
+                            android:text="@string/default_grid_columns"
                             android:textStyle="bold"
                             android:textColor="?attr/colorPrimary" />
                     </RelativeLayout>
@@ -103,7 +107,7 @@
                         android:id="@+id/switchUniformGrid" 
                         android:layout_width="match_parent" 
                         android:layout_height="wrap_content" 
-                        android:text="Tamanho de Notas Uniforme"
+                        android:text="@string/uniform_note_size"
                         android:textSize="16sp"
                         app:switchPadding="16dp" />
 
@@ -118,7 +122,7 @@
                         android:id="@+id/switch24h" 
                         android:layout_width="match_parent" 
                         android:layout_height="wrap_content" 
-                        android:text="Usar Formato 24h"
+                        android:text="@string/use_24h_format"
                         android:textSize="16sp"
                         app:switchPadding="16dp" />
                 </LinearLayout>
@@ -128,7 +132,7 @@
             <TextView 
                 android:layout_width="match_parent" 
                 android:layout_height="wrap_content"
-                android:text="Personalização" 
+                android:text="@string/personalization" 
                 android:textColor="?attr/colorPrimary" 
                 android:textSize="13sp"
                 android:textStyle="bold" 
@@ -156,10 +160,10 @@
                         android:layout_width="match_parent" 
                         android:layout_height="wrap_content" 
                         android:padding="8dp">
-                        <RadioButton android:id="@+id/rbLight" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Light Theme" android:padding="12dp" />
-                        <RadioButton android:id="@+id/rbPantera" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Pantera OLED Black" android:padding="12dp" />
-                        <RadioButton android:id="@+id/rbDynamicBlack" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Material You Black" android:padding="12dp" />
-                        <RadioButton android:id="@+id/rbDynamicLight" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Material You Light" android:padding="12dp" />
+                        <RadioButton android:id="@+id/rbLight" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/theme_light" android:padding="12dp" />
+                        <RadioButton android:id="@+id/rbPantera" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/theme_pantera" android:padding="12dp" />
+                        <RadioButton android:id="@+id/rbDynamicBlack" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/theme_material_you_black" android:padding="12dp" />
+                        <RadioButton android:id="@+id/rbDynamicLight" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/theme_material_you_light" android:padding="12dp" />
                     </RadioGroup>
 
                     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?attr/colorOutlineVariant" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" />
@@ -170,8 +174,23 @@
                         android:orientation="vertical" 
                         android:padding="16dp">
                         <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content">
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Transparência de Widgets" android:textSize="16sp" android:textColor="?attr/colorOnSurface" />
-                            <TextView android:id="@+id/tvTransparencyValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentEnd="true" android:text="100%" android:textStyle="bold" android:textColor="?attr/colorPrimary" />
+                            <TextView 
+                                android:id="@+id/tvTransparencyLabel"
+                                android:layout_width="wrap_content" 
+                                android:layout_height="wrap_content" 
+                                android:layout_alignParentStart="true"
+                                android:layout_toStartOf="@+id/tvTransparencyValue"
+                                android:text="@string/widget_transparency" 
+                                android:textSize="16sp" 
+                                android:textColor="?attr/colorOnSurface" />
+                            <TextView 
+                                android:id="@+id/tvTransparencyValue" 
+                                android:layout_width="wrap_content" 
+                                android:layout_height="wrap_content" 
+                                android:layout_alignParentEnd="true" 
+                                android:text="@string/default_transparency" 
+                                android:textStyle="bold" 
+                                android:textColor="?attr/colorPrimary" />
                         </RelativeLayout>
                         <com.google.android.material.slider.Slider 
                             android:id="@+id/sliderTransparency" 
@@ -185,8 +204,8 @@
 
                     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?attr/colorOutlineVariant" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" />
                     
-                    <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/switchNotifyColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="16dp" android:text="Cores em Notificações" android:textSize="16sp" />
-                    <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/switchAlarmColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="16dp" android:text="Cores em Alarmes" android:textSize="16sp" />
+                    <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/switchNotifyColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="16dp" android:text="@string/colors_in_notifications" android:textSize="16sp" />
+                    <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/switchAlarmColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="16dp" android:text="@string/colors_in_alarms" android:textSize="16sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -194,7 +213,7 @@
             <TextView 
                 android:layout_width="match_parent" 
                 android:layout_height="wrap_content"
-                android:text="Estilo das Notas" 
+                android:text="@string/note_style" 
                 android:textColor="?attr/colorPrimary" 
                 android:textSize="13sp"
                 android:textStyle="bold" 
@@ -217,9 +236,9 @@
                     android:layout_width="match_parent" 
                     android:layout_height="wrap_content" 
                     android:padding="8dp">
-                    <RadioButton android:id="@+id/rbStyleLabel" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Etiqueta (Padrão)" android:padding="12dp" />
-                    <RadioButton android:id="@+id/rbStylePastel" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Pastel (Suave)" android:padding="12dp" />
-                    <RadioButton android:id="@+id/rbStyleSolid" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Solid (Vibrante)" android:padding="12dp" />
+                    <RadioButton android:id="@+id/rbStyleLabel" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/style_label_default" android:padding="12dp" />
+                    <RadioButton android:id="@+id/rbStylePastel" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/style_pastel_soft" android:padding="12dp" />
+                    <RadioButton android:id="@+id/rbStyleSolid" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/style_solid_vibrant" android:padding="12dp" />
                 </RadioGroup>
             </com.google.android.material.card.MaterialCardView>
 
@@ -227,7 +246,7 @@
             <TextView 
                 android:layout_width="match_parent" 
                 android:layout_height="wrap_content"
-                android:text="Fundo do Aplicativo" 
+                android:text="@string/app_background" 
                 android:textColor="?attr/colorPrimary" 
                 android:textSize="13sp"
                 android:textStyle="bold" 
@@ -250,9 +269,9 @@
                     android:layout_width="match_parent" 
                     android:layout_height="wrap_content" 
                     android:padding="8dp">
-                    <RadioButton android:id="@+id/rbBgDefault" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Padrão" android:padding="12dp" />
-                    <RadioButton android:id="@+id/rbBgMesh" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Malha (Mesh)" android:padding="12dp" />
-                    <RadioButton android:id="@+id/rbBgGeometric" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Geométrico" android:padding="12dp" />
+                    <RadioButton android:id="@+id/rbBgDefault" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/bg_default" android:padding="12dp" />
+                    <RadioButton android:id="@+id/rbBgMesh" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/bg_mesh" android:padding="12dp" />
+                    <RadioButton android:id="@+id/rbBgGeometric" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/bg_geometric" android:padding="12dp" />
                 </RadioGroup>
             </com.google.android.material.card.MaterialCardView>
 
@@ -260,7 +279,7 @@
             <TextView 
                 android:layout_width="match_parent" 
                 android:layout_height="wrap_content"
-                android:text="Privacidade e Segurança" 
+                android:text="@string/privacy_and_security" 
                 android:textColor="?attr/colorPrimary" 
                 android:textSize="13sp"
                 android:textStyle="bold" 
@@ -279,14 +298,14 @@
                 android:layout_marginBottom="24dp">
                 
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
-                    <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/switchBiometric" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="16dp" android:text="Biometria do Dispositivo" android:textSize="16sp" />
+                    <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/switchBiometric" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="16dp" android:text="@string/device_biometrics" android:textSize="16sp" />
                     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?attr/colorOutlineVariant" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" />
                     <com.google.android.material.button.MaterialButton 
                         android:id="@+id/btnSetAppPassword" 
                         style="@style/Widget.Material3.Button.TextButton" 
                         android:layout_width="match_parent" 
                         android:layout_height="wrap_content" 
-                        android:text="Senha do Aplicativo" 
+                        android:text="@string/app_password" 
                         android:gravity="start|center_vertical" 
                         android:padding="16dp" 
                         app:icon="@drawable/ic_lock"
@@ -299,7 +318,7 @@
             <TextView 
                 android:layout_width="match_parent" 
                 android:layout_height="wrap_content"
-                android:text="Planejamento e Repetições" 
+                android:text="@string/planning_and_repetitions" 
                 android:textColor="?attr/colorPrimary" 
                 android:textSize="13sp"
                 android:textStyle="bold" 
@@ -323,7 +342,7 @@
                         style="@style/Widget.Material3.Button.TextButton" 
                         android:layout_width="match_parent" 
                         android:layout_height="wrap_content" 
-                        android:text="Ver Notas e Listas Recorrentes" 
+                        android:text="@string/view_recurring_notes" 
                         android:gravity="start|center_vertical" 
                         android:padding="16dp" 
                         app:icon="@drawable/ic_calendar"
@@ -336,7 +355,7 @@
             <TextView 
                 android:layout_width="match_parent" 
                 android:layout_height="wrap_content"
-                android:text="Gerenciamento" 
+                android:text="@string/management" 
                 android:textColor="?attr/colorPrimary" 
                 android:textSize="13sp"
                 android:textStyle="bold" 
@@ -360,7 +379,7 @@
                         style="@style/Widget.Material3.Button.TextButton" 
                         android:layout_width="match_parent" 
                         android:layout_height="wrap_content" 
-                        android:text="Gerenciar Lixeira" 
+                        android:text="@string/manage_trash" 
                         android:gravity="start|center_vertical" 
                         android:padding="16dp" 
                         app:icon="@drawable/ic_delete"
@@ -372,7 +391,7 @@
                         style="@style/Widget.Material3.Button.TextButton" 
                         android:layout_width="match_parent" 
                         android:layout_height="wrap_content" 
-                        android:text="Limpar Todos os Dados" 
+                        android:text="@string/clear_all_data" 
                         android:textColor="#F44336" 
                         android:gravity="start|center_vertical" 
                         android:padding="16dp" 
@@ -398,14 +417,14 @@
                     <TextView 
                         android:layout_width="wrap_content" 
                         android:layout_height="wrap_content" 
-                        android:text="Notara_" 
+                        android:text="@string/app_name" 
                         android:textSize="22sp" 
                         android:textStyle="bold"
                         android:textColor="?attr/colorOnSurfaceVariant" />
                     <TextView 
                         android:layout_width="wrap_content" 
                         android:layout_height="wrap_content" 
-                        android:text="Produtividade e Segurança" 
+                        android:text="@string/app_tagline" 
                         android:textSize="14sp"
                         android:alpha="0.7"
                         android:textColor="?attr/colorOnSurfaceVariant" />
@@ -413,7 +432,7 @@
                         android:id="@+id/tvVersion" 
                         android:layout_width="wrap_content" 
                         android:layout_height="wrap_content" 
-                        android:text="v2.1 Build 2026.04" 
+                        android:text="@string/app_version_label" 
                         android:layout_marginTop="12dp" 
                         android:textSize="12sp"
                         android:alpha="0.5"

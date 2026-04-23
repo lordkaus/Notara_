@@ -82,8 +82,8 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
 
         // Regra de Privacidade: Título com '*' e conteúdo oculto se trancado
         if (note.isLocked == 1) {
-            holder.binding.tvTitle.setText("* " + note.title);
-            holder.binding.tvContent.setText("Conteúdo Protegido");
+            holder.binding.tvTitle.setText(holder.itemView.getContext().getString(R.string.locked_note_title, note.title));
+            holder.binding.tvContent.setText(holder.itemView.getContext().getString(R.string.locked_note_content));
             holder.binding.tvContent.setAlpha(0.4f);
         } else {
             holder.binding.tvTitle.setText(note.title);
@@ -145,8 +145,12 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
         }
 
         holder.itemView.setOnClickListener(v -> {
-            Intent intent = new Intent(v.getContext(), note.type == 1 ? ChecklistActivity.class : EditActivity.class);
-            intent.putExtra("NOTE_ID", note.id);
+            DatabaseHelper.Note noteData = notes.get(holder.getBindingAdapterPosition());
+            Intent intent = new Intent(v.getContext(), noteData.type == 1 ? ChecklistActivity.class : EditActivity.class);
+            intent.putExtra("NOTE_ID", noteData.id);
+            if (noteData.id != -1) {
+                intent.putExtra("PREVIEW_MODE", true);
+            }
             v.getContext().startActivity(intent);
         });
 
@@ -177,7 +181,7 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
                 builder.append("☐ ").append(line).append("\n");
             }
         }
-        if (lines.length > 5) builder.append("...");
+        if (lines.length > 5) builder.append("…");
         return builder.length() > 0 && builder.charAt(builder.length()-1) == '\n' ? builder.subSequence(0, builder.length()-1) : builder;
     }
 

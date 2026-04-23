@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Configurar Repetição"
+        android:text="@string/setup_recurrence"
         android:textSize="20sp"
         android:textStyle="bold"
         android:textColor="?attr/colorOnSurface"
@@ -19,7 +19,7 @@
         android:id="@+id/switchRecurrenceToggle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Ativar Repetição"
+        android:text="@string/enable_recurrence"
         android:textSize="16sp"
         app:switchPadding="16dp" />
 
@@ -35,14 +35,15 @@
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Frequência"
+            android:hint="@string/frequency"
             app:startIconDrawable="@android:drawable/ic_menu_today">
             
             <AutoCompleteTextView
                 android:id="@+id/dropdownRecurrenceType"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="none" />
+                android:inputType="none"
+                android:hint="@string/frequency" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <LinearLayout
@@ -56,7 +57,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Repetir nos dias:"
+                android:text="@string/repeat_on_days"
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:textColor="?attr/colorPrimary"
@@ -69,13 +70,13 @@
                 app:chipSpacingHorizontal="4dp"
                 app:singleSelection="false">
                 
-                <com.google.android.material.chip.Chip android:id="@+id/chipDom" style="@style/Widget.MaterialComponents.Chip.Choice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Dom" />
-                <com.google.android.material.chip.Chip android:id="@+id/chipSeg" style="@style/Widget.MaterialComponents.Chip.Choice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Seg" />
-                <com.google.android.material.chip.Chip android:id="@+id/chipTer" style="@style/Widget.MaterialComponents.Chip.Choice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ter" />
-                <com.google.android.material.chip.Chip android:id="@+id/chipQua" style="@style/Widget.MaterialComponents.Chip.Choice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Qua" />
-                <com.google.android.material.chip.Chip android:id="@+id/chipQui" style="@style/Widget.MaterialComponents.Chip.Choice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Qui" />
-                <com.google.android.material.chip.Chip android:id="@+id/chipSex" style="@style/Widget.MaterialComponents.Chip.Choice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sex" />
-                <com.google.android.material.chip.Chip android:id="@+id/chipSab" style="@style/Widget.MaterialComponents.Chip.Choice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sáb" />
+                <com.google.android.material.chip.Chip android:id="@+id/chipDom" style="@style/Widget.MaterialComponents.Chip.Choice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/day_full_sun" />
+                <com.google.android.material.chip.Chip android:id="@+id/chipSeg" style="@style/Widget.MaterialComponents.Chip.Choice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/day_full_mon" />
+                <com.google.android.material.chip.Chip android:id="@+id/chipTer" style="@style/Widget.MaterialComponents.Chip.Choice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/day_full_tue" />
+                <com.google.android.material.chip.Chip android:id="@+id/chipQua" style="@style/Widget.MaterialComponents.Chip.Choice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/day_full_wed" />
+                <com.google.android.material.chip.Chip android:id="@+id/chipQui" style="@style/Widget.MaterialComponents.Chip.Choice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/day_full_thu" />
+                <com.google.android.material.chip.Chip android:id="@+id/chipSex" style="@style/Widget.MaterialComponents.Chip.Choice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/day_full_fri" />
+                <com.google.android.material.chip.Chip android:id="@+id/chipSab" style="@style/Widget.MaterialComponents.Chip.Choice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/day_full_sat" />
             </com.google.android.material.chip.ChipGroup>
         </LinearLayout>
     </LinearLayout>

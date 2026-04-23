@@ -21,7 +21,7 @@
             android:id="@+id/widget_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Nenhuma nota disponível"
+            android:text="@string/no_notes_available"
             android:textColor="#FFFFFF"
             android:textStyle="bold"
             android:maxLines="2"

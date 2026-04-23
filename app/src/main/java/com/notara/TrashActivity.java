@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.StaggeredGridLayoutManager;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -19,7 +20,7 @@ public class TrashActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         settings = new SettingsManager(this);
-        
+
         // Aplica o tema
         applyTheme();
 
@@ -61,12 +62,14 @@ public class TrashActivity extends AppCompatActivity {
 
     private void applyTheme() {
         int theme = settings.getTheme();
+        WindowInsetsControllerCompat windowInsetsController = new WindowInsetsControllerCompat(getWindow(), getWindow().getDecorView());
+
         if (theme == 0 || theme == 3) {
             setTheme(R.style.Theme_Notara);
-            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+            windowInsetsController.setAppearanceLightStatusBars(true);
         } else {
             setTheme(theme == 1 ? R.style.Theme_Notara_Pantera : R.style.Theme_Notara);
-            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+            windowInsetsController.setAppearanceLightStatusBars(false);
         }
     }
 
@@ -81,13 +84,13 @@ public class TrashActivity extends AppCompatActivity {
     private void setupRecyclerView() {
         int columns = settings.getGridColumns();
         boolean uniform = settings.isUniformGridEnabled();
-        
+
         if (uniform) {
             binding.rvTrash.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, columns));
         } else {
             binding.rvTrash.setLayoutManager(new StaggeredGridLayoutManager(columns, StaggeredGridLayoutManager.VERTICAL));
         }
-        
+
         adapter = new NoteAdapter(new ArrayList<>(), new NoteAdapter.NoteActionListener() {
             @Override
             public void onNoteAction() {

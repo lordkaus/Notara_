@@ -52,8 +52,15 @@ public class PermissionUtils {
     }
 
     public static void openNotificationSettings(Context context) {
-        Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
-        intent.putExtra(Settings.EXTRA_APP_PACKAGE, context.getPackageName());
+        Intent intent;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+            intent.putExtra(Settings.EXTRA_APP_PACKAGE, context.getPackageName());
+        } else {
+            intent = new Intent("android.settings.APP_NOTIFICATION_SETTINGS");
+            intent.putExtra("app_package", context.getPackageName());
+            intent.putExtra("app_uid", context.getApplicationInfo().uid);
+        }
         context.startActivity(intent);
     }
 }

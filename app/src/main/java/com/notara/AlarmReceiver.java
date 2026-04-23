@@ -77,7 +77,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(android.R.drawable.ic_popup_reminder)
                 .setContentTitle(note.title)
-                .setContentText(note.content != null && note.content.length() > 50 ? note.content.substring(0, 47) + "..." : note.content)
+                .setContentText(note.content != null && note.content.length() > 50 ? note.content.substring(0, 47) + "…" : note.content)
                 .setSound(Settings.System.DEFAULT_NOTIFICATION_URI)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pi)
@@ -117,10 +117,8 @@ public class AlarmReceiver extends BroadcastReceiver {
                 // Fallback para alarme inexato mas que acorda o dispositivo
                 am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, note.reminderTime, pi);
             }
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, note.reminderTime, pi);
         } else {
-            am.setExact(AlarmManager.RTC_WAKEUP, note.reminderTime, pi);
+            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, note.reminderTime, pi);
         }
     }
 

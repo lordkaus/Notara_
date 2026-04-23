@@ -6,6 +6,7 @@ import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -25,14 +26,16 @@ public class SettingsActivity extends AppCompatActivity {
         viewModel = new ViewModelProvider(this).get(NoteViewModel.class);
         securityManager = new SecurityManager(this);
         securityDataStore = SecurityDataStore.getInstance(this);
-        
+
         int theme = settings.getTheme();
-        if (theme == 0) {
+        WindowInsetsControllerCompat windowInsetsController = new WindowInsetsControllerCompat(getWindow(), getWindow().getDecorView());
+
+        if (theme == 0 || theme == 3) {
             setTheme(R.style.Theme_Notara);
-            getWindow().getDecorView().setSystemUiVisibility(android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+            windowInsetsController.setAppearanceLightStatusBars(true);
         } else {
             setTheme(theme == 1 ? R.style.Theme_Notara_Pantera : R.style.Theme_Notara);
-            getWindow().getDecorView().setSystemUiVisibility(android.view.View.SYSTEM_UI_FLAG_VISIBLE);
+            windowInsetsController.setAppearanceLightStatusBars(false);
         }
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
@@ -112,11 +115,11 @@ public class SettingsActivity extends AppCompatActivity {
     private void setupGridSettings() {
         Slider slider = findViewById(R.id.sliderGrid);
         android.widget.TextView tvValue = findViewById(R.id.tvGridValue);
-        
+
         int currentCols = settings.getGridColumns();
         slider.setValue(currentCols);
         tvValue.setText(String.valueOf(currentCols));
-        
+
         slider.addOnChangeListener((s, value, fromUser) -> {
             int val = (int) value;
             settings.setGridColumns(val);
@@ -144,7 +147,7 @@ public class SettingsActivity extends AppCompatActivity {
     private void setupThemeSettings() {
         RadioGroup rg = findViewById(R.id.rgThemes);
         int currentTheme = settings.getTheme();
-        
+
         if (currentTheme == 0) ((RadioButton) findViewById(R.id.rbLight)).setChecked(true);
         else if (currentTheme == 1) ((RadioButton) findViewById(R.id.rbPantera)).setChecked(true);
         else if (currentTheme == 2) ((RadioButton) findViewById(R.id.rbDynamicBlack)).setChecked(true);
@@ -156,7 +159,7 @@ public class SettingsActivity extends AppCompatActivity {
             else if (checkedId == R.id.rbPantera) newTheme = 1;
             else if (checkedId == R.id.rbDynamicBlack) newTheme = 2;
             else if (checkedId == R.id.rbDynamicLight) newTheme = 3;
-            
+
             settings.setTheme(newTheme);
             showRestartDialog();
         });
@@ -165,12 +168,12 @@ public class SettingsActivity extends AppCompatActivity {
         android.widget.TextView tvTransValue = findViewById(R.id.tvTransparencyValue);
         int currentTrans = settings.getTransparency();
         sliderTrans.setValue(currentTrans);
-        tvTransValue.setText(currentTrans + "%");
+        tvTransValue.setText(getString(R.string.transparency_value, currentTrans));
 
         sliderTrans.addOnChangeListener((s, value, fromUser) -> {
             int val = (int) value;
             settings.setTransparency(val);
-            tvTransValue.setText(val + "%");
+            tvTransValue.setText(getString(R.string.transparency_value, val));
             com.notara.widget.NoteWidgetProvider.updateAllWidgets(this);
             applyBgTheme();
         });
@@ -187,7 +190,7 @@ public class SettingsActivity extends AppCompatActivity {
             if (checkedId == R.id.rbStyleLabel) settings.setCardStyle(0);
             else if (checkedId == R.id.rbStylePastel) settings.setCardStyle(1);
             else if (checkedId == R.id.rbStyleSolid) settings.setCardStyle(2);
-            
+
             com.notara.widget.NoteWidgetProvider.updateAllWidgets(this);
             showRestartDialog();
         });
@@ -211,7 +214,7 @@ public class SettingsActivity extends AppCompatActivity {
     private void applyBgTheme() {
         android.view.View bgView = findViewById(R.id.bgView);
         if (bgView == null) return;
-        
+
         int bgTheme = settings.getBgTheme();
         if (bgTheme == 1) {
             bgView.setBackgroundResource(R.drawable.bg_mesh);
@@ -250,9 +253,9 @@ public class SettingsActivity extends AppCompatActivity {
                 .setTitle("Apagar Tudo?")
                 .setMessage("Esta ação removerá todas as suas notas permanentemente. Confirme sua identidade.")
                 .setPositiveButton("Redefinir", (d, w) -> {
-                    securityManager.authenticate(this, 
-                        "Confirmar Exclusão", 
-                        "Autentique-se para apagar todos os dados", 
+                    securityManager.authenticate(this,
+                        "Confirmar Exclusão",
+                        "Autentique-se para apagar todos os dados",
                         new SecurityManager.AuthCallback() {
                             @Override
                             public void onAuthenticated() {

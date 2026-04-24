@@ -145,12 +145,8 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
         }
 
         holder.itemView.setOnClickListener(v -> {
-            DatabaseHelper.Note noteData = notes.get(holder.getBindingAdapterPosition());
-            Intent intent = new Intent(v.getContext(), noteData.type == 1 ? ChecklistActivity.class : EditActivity.class);
-            intent.putExtra("NOTE_ID", noteData.id);
-            if (noteData.id != -1) {
-                intent.putExtra("PREVIEW_MODE", true);
-            }
+            Intent intent = new Intent(v.getContext(), note.type == 1 ? ChecklistActivity.class : EditActivity.class);
+            intent.putExtra("NOTE_ID", note.id);
             v.getContext().startActivity(intent);
         });
 

@@ -1,20 +1,3 @@
-/*
- * Copyright (c) 1996 lordkaus
- * This file is part of Notara_.
- *
- * Notara_ is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Notara_ is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Notara_. If not, see <https://www.gnu.org/licenses/>.
- */
 package com.notara;
 
 import android.Manifest;
@@ -70,38 +53,26 @@ public class EditActivity extends AppCompatActivity {
     private SettingsManager settings;
     private boolean isUnlocked = false;
 
-    private boolean isPreviewMode = false;
-    private android.view.GestureDetector gestureDetector;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         settings = new SettingsManager(this);
         securityManager = new SecurityManager(this);
         super.onCreate(savedInstanceState);
 
-        // ... (código existente de temas)
-        
-        isPreviewMode = getIntent().getBooleanExtra("PREVIEW_MODE", false);
+        // --- CORREÇÃO DO TEMA E API LEVEL ---
+        int theme = settings.getTheme();
+        if (theme == 0 || theme == 3) {
+            setTheme(R.style.Theme_Notara);
+            // SYSTEM_UI_FLAG_LIGHT_STATUS_BAR exige API 23 (Android 6.0)
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+        } else {
+            setTheme(theme == 1 ? R.style.Theme_Notara_Pantera : R.style.Theme_Notara);
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+        }
+        // -------------------------------------
 
         binding = ActivityEditBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-
-        // Configuração de modo preview
-        if (isPreviewMode) {
-            enablePreviewMode();
-        }
-
-        // Detector de duplo clique para editar
-        gestureDetector = new android.view.GestureDetector(this, new android.view.GestureDetector.SimpleOnGestureListener() {
-            @Override
-            public boolean onDoubleTap(android.view.MotionEvent e) {
-                if (isPreviewMode) {
-                    enableEditMode();
-                    return true;
-                }
-                return false;
-            }
-        });
 
         viewModel = new ViewModelProvider(this).get(NoteViewModel.class);
         noteId = getIntent().getIntExtra("NOTE_ID", -1);
@@ -143,17 +114,12 @@ public class EditActivity extends AppCompatActivity {
         setupListeners();
     }
 
-    @Override
-    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
-        gestureDetector.onTouchEvent(ev);
-        return super.dispatchTouchEvent(ev);
-    }
-
     private void lockContent() {
-        binding.etTitle.setVisibility(View.GONE);
-        binding.tvDate.setVisibility(View.GONE);
         binding.editNoteText.setVisibility(View.GONE);
-        binding.bottomAppBar.setVisibility(View.GONE);
+        binding.btnColorPicker.setVisibility(View.GONE);
+        binding.btnReminder.setVisibility(View.GONE);
+        binding.btnAlarm.setVisibility(View.GONE);
+        binding.btnConvertToChecklist.setVisibility(View.GONE);
         binding.btnSave.setVisibility(View.GONE);
     }
 
@@ -167,61 +133,12 @@ public class EditActivity extends AppCompatActivity {
                 Toast.makeText(this, "Erro ao descriptografar nota.", Toast.LENGTH_SHORT).show();
             }
         }
-        
-        // Sempre exibe os campos após desbloqueio
-        binding.etTitle.setVisibility(View.VISIBLE);
-        binding.tvDate.setVisibility(View.VISIBLE);
         binding.editNoteText.setVisibility(View.VISIBLE);
-        
-        // Se for uma nota existente aberta da lista, entra em modo preview primeiro
-        if (noteId != -1) {
-            enablePreviewMode();
-        } else {
-            enableEditMode();
-        }
-    }
-
-    private void updateUIState() {
-        boolean shouldShowControls = !isPreviewMode && isUnlocked;
-        
-        binding.bottomAppBar.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
-        binding.btnSave.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
-        
-        // Ensure text views are visible if unlocked
-        if (isUnlocked) {
-            binding.etTitle.setVisibility(View.VISIBLE);
-            binding.tvDate.setVisibility(View.VISIBLE);
-            binding.editNoteText.setVisibility(View.VISIBLE);
-        }
-
-        // Toggle focusability
-        binding.etTitle.setFocusable(shouldShowControls);
-        binding.etTitle.setFocusableInTouchMode(shouldShowControls);
-        binding.editNoteText.setFocusable(shouldShowControls);
-        binding.editNoteText.setFocusableInTouchMode(shouldShowControls);
-        
-        if (isPreviewMode) {
-            hideKeyboard();
-        }
-    }
-
-    private void hideKeyboard() {
-        android.view.View view = this.getCurrentFocus();
-        if (view != null) {
-            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-        }
-    }
-
-    private void enablePreviewMode() {
-        isPreviewMode = true;
-        updateUIState();
-    }
-
-    private void enableEditMode() {
-        isPreviewMode = false;
-        updateUIState();
-        binding.etTitle.requestFocus();
+        binding.btnColorPicker.setVisibility(View.VISIBLE);
+        binding.btnReminder.setVisibility(View.VISIBLE);
+        binding.btnAlarm.setVisibility(View.VISIBLE);
+        binding.btnConvertToChecklist.setVisibility(View.VISIBLE);
+        binding.btnSave.setVisibility(View.VISIBLE);
     }
 
     private void requestUnlock() {

@@ -1,24 +1,6 @@
-/*
- * Copyright (c) 1996 lordkaus
- * This file is part of Notara_.
- *
- * Notara_ is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Notara_ is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Notara_. If not, see <https://www.gnu.org/licenses/>.
- */
 package com.notara;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.content.Context;
@@ -79,8 +61,6 @@ public class ChecklistActivity extends AppCompatActivity {
 
     private SettingsManager settings;
     private boolean isUnlocked = false;
-    private boolean isPreviewMode = false;
-    private android.view.GestureDetector gestureDetector;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,28 +82,14 @@ public class ChecklistActivity extends AppCompatActivity {
         binding = ActivityChecklistBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        isPreviewMode = getIntent().getBooleanExtra("PREVIEW_MODE", false);
-
-        // Detector de duplo clique
-        gestureDetector = new android.view.GestureDetector(this, new android.view.GestureDetector.SimpleOnGestureListener() {
-            @Override
-            public boolean onDoubleTap(android.view.MotionEvent e) {
-                if (isPreviewMode) {
-                    enableEditMode();
-                    return true;
-                }
-                return false;
-            }
-        });
-
         viewModel = new ViewModelProvider(this).get(NoteViewModel.class);
         noteId = getIntent().getIntExtra("NOTE_ID", -1);
 
         if (noteId == -1) {
             reminderTime = getIntent().getLongExtra("INITIAL_REMINDER_TIME", 0);
-            isUnlocked = true;
-            enableEditMode();
-        } else {
+        }
+
+        if (noteId != -1) {
             currentNote = viewModel.getNote(noteId);
             if (currentNote != null) {
                 binding.etChecklistTitle.setText(currentNote.title);
@@ -138,26 +104,15 @@ public class ChecklistActivity extends AppCompatActivity {
                     requestUnlock();
                 } else {
                     isUnlocked = true;
-                    enablePreviewMode();
                 }
             }
         }
-
-        binding.getRoot().post(() -> {
-            if (isPreviewMode) hideKeyboard();
-        });
 
         requestPermissions();
         updateColorIndicator();
         setupDate();
         setupRecyclerView();
         setupListeners();
-    }
-
-    @Override
-    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
-        gestureDetector.onTouchEvent(ev);
-        return super.dispatchTouchEvent(ev);
     }
 
     private void lockContent() {
@@ -176,59 +131,18 @@ public class ChecklistActivity extends AppCompatActivity {
             try {
                 String decrypted = SecurityCore.decrypt(currentNote.content);
                 parseContent(decrypted);
+                adapter.notifyItemRangeInserted(0, items.size());
             } catch (Exception e) {
                 Toast.makeText(this, "Erro ao descriptografar lista.", Toast.LENGTH_SHORT).show();
             }
         }
-        
-        if (noteId != -1) {
-            enablePreviewMode();
-        } else {
-            enableEditMode();
-        }
-    }
-
-    private void updateUIState() {
-        boolean shouldShowControls = !isPreviewMode && isUnlocked;
-        
-        binding.bottomAppBar.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
-        binding.btnSaveChecklist.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
-        binding.tilNewItem.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
-        
-        if (isUnlocked) {
-            binding.rvChecklist.setVisibility(View.VISIBLE);
-            binding.etChecklistTitle.setVisibility(View.VISIBLE);
-        }
-
-        binding.etChecklistTitle.setFocusable(shouldShowControls);
-        binding.etChecklistTitle.setFocusableInTouchMode(shouldShowControls);
-        
-        if (isPreviewMode) {
-            hideKeyboard();
-        }
-        
-        if (adapter != null) {
-            adapter.notifyItemRangeChanged(0, items.size());
-        }
-    }
-
-    private void hideKeyboard() {
-        View view = this.getCurrentFocus();
-        if (view != null) {
-            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-        }
-    }
-
-    private void enablePreviewMode() {
-        isPreviewMode = true;
-        updateUIState();
-    }
-
-    private void enableEditMode() {
-        isPreviewMode = false;
-        updateUIState();
-        binding.etChecklistTitle.requestFocus();
+        binding.rvChecklist.setVisibility(View.VISIBLE);
+        binding.tilNewItem.setVisibility(View.VISIBLE);
+        binding.btnChecklistColorPicker.setVisibility(View.VISIBLE);
+        binding.btnChecklistReminder.setVisibility(View.VISIBLE);
+        binding.btnChecklistAlarm.setVisibility(View.VISIBLE);
+        binding.btnConvertToText.setVisibility(View.VISIBLE);
+        binding.btnSaveChecklist.setVisibility(View.VISIBLE);
     }
 
     private void requestUnlock() {
@@ -622,7 +536,6 @@ public class ChecklistActivity extends AppCompatActivity {
     class CheckAdapter extends RecyclerView.Adapter<CheckAdapter.VH> {
         @NonNull @Override public VH onCreateViewHolder(@NonNull ViewGroup p, int t) { return new VH(ItemChecklistBinding.inflate(LayoutInflater.from(p.getContext()), p, false)); }
 
-        @SuppressLint("ClickableViewAccessibility")
         @Override public void onBindViewHolder(@NonNull VH h, int p) {
             CheckItem i = items.get(p);
 
@@ -631,27 +544,6 @@ public class ChecklistActivity extends AppCompatActivity {
 
             h.binding.cbItem.setChecked(i.checked);
             applyTextWithEffect(h, i.name, i.checked);
-
-            // Controle de edição baseado no modo Preview
-            h.binding.etItemName.setFocusable(!isPreviewMode);
-            h.binding.etItemName.setFocusableInTouchMode(!isPreviewMode);
-            h.binding.btnRemoveItem.setVisibility(isPreviewMode ? View.GONE : View.VISIBLE);
-            
-            // Permite detectar clique duplo para editar mesmo sobre o item
-            h.itemView.setOnTouchListener((v, event) -> {
-                gestureDetector.onTouchEvent(event);
-                if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
-                    v.performClick();
-                }
-                return false;
-            });
-            h.binding.etItemName.setOnTouchListener((v, event) -> {
-                gestureDetector.onTouchEvent(event);
-                if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
-                    v.performClick();
-                }
-                return isPreviewMode; // Consome o toque no preview para não abrir teclado, mas permite clique duplo
-            });
 
             h.watcher = new android.text.TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}

@@ -1,20 +1,3 @@
-/*
- * Copyright (c) 1996 lordkaus
- * This file is part of Notara_.
- *
- * Notara_ is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Notara_ is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Notara_. If not, see <https://www.gnu.org/licenses/>.
- */
 package com.notara;
 
 import android.Manifest;
@@ -184,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
             "Mover para Lixeira",
             "Excluir Permanentemente",
             "Fixar na Tela Inicial (Widget)",
-            "Compartilhar..."
+            "Compartilhamento Seguro"
         };
 
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
@@ -195,70 +178,11 @@ public class MainActivity extends AppCompatActivity {
                     case 1: moveToTrash(note); break;
                     case 2: authenticateAndDelete(note); break;
                     case 3: pinWidget(note); break;
-                    case 4: showShareOptionsDialog(note); break;
+                    case 4: shareNoteSecurely(note); break;
                 }
             })
             .setNegativeButton("Cancelar", null)
             .show();
-    }
-
-    private void showShareOptionsDialog(DatabaseHelper.Note note) {
-        String[] options = {
-            "Compartilhar Texto (Copia e Cola)",
-            "Salvar Arquivo em .txt",
-            "Exportar Seguro .savage (Com Cripto)"
-        };
-
-        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setTitle("Compartilhar: " + note.title)
-            .setItems(options, (dialog, which) -> {
-                switch (which) {
-                    case 0: shareNoteNormally(note); break;
-                    case 1: exportNoteAsFile(note); break;
-                    case 2: exportSecureNoteAsFile(note); break;
-                }
-            })
-            .setNegativeButton("Voltar", null)
-            .show();
-    }
-
-    private void exportSecureNoteAsFile(DatabaseHelper.Note note) {
-        android.widget.EditText etPassword = new android.widget.EditText(this);
-        etPassword.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        etPassword.setHint("Senha de Exportação");
-
-        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setTitle("Criptografar Arquivo")
-            .setMessage("Defina uma senha para proteger este arquivo .savage.")
-            .setView(etPassword)
-            .setPositiveButton("Próximo", (d, w) -> {
-                String pass = etPassword.getText().toString();
-                if (pass.isEmpty()) { Toast.makeText(this, "Senha necessária", Toast.LENGTH_SHORT).show(); return; }
-                
-                if (note.isLocked == 1) {
-                    authenticateForAction(note, n -> {
-                        noteToExport = n;
-                        secureExportPassword = pass;
-                        launchSecureFilePicker();
-                    });
-                } else {
-                    noteToExport = note;
-                    secureExportPassword = pass;
-                    launchSecureFilePicker();
-                }
-            })
-            .setNegativeButton("Cancelar", null)
-            .show();
-    }
-
-    private String secureExportPassword;
-    private void launchSecureFilePicker() {
-        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        // ALTERAÇÃO: application/octet-stream impede que o Android tente "corrigir" a extensão
-        intent.setType("application/octet-stream"); 
-        intent.putExtra(Intent.EXTRA_TITLE, getSanitizedBaseName(noteToExport.title) + ".savage");
-        startActivityForResult(intent, REQUEST_CODE_CREATE_FILE + 1);
     }
 
     private void pinWidget(DatabaseHelper.Note note) {
@@ -327,105 +251,6 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, "Nota movida para a lixeira", Toast.LENGTH_SHORT).show();
     }
 
-    private DatabaseHelper.Note noteToExport;
-    private static final int REQUEST_CODE_CREATE_FILE = 1002;
-
-    private void shareNoteNormally(DatabaseHelper.Note note) {
-        if (note.isLocked == 1) {
-            authenticateForAction(note, this::doShareNormally);
-        } else {
-            doShareNormally(note);
-        }
-    }
-
-    private void doShareNormally(DatabaseHelper.Note note) {
-        String content = formatNoteForExport(note);
-        Intent intent = new Intent(Intent.ACTION_SEND);
-        intent.setType("text/plain");
-        intent.putExtra(Intent.EXTRA_SUBJECT, note.title);
-        intent.putExtra(Intent.EXTRA_TEXT, content);
-        startActivity(Intent.createChooser(intent, "Compartilhar nota"));
-    }
-
-    private void exportNoteAsFile(DatabaseHelper.Note note) {
-        if (note.isLocked == 1) {
-            authenticateForAction(note, n -> {
-                noteToExport = n;
-                launchTextFilePicker();
-            });
-        } else {
-            noteToExport = note;
-            launchTextFilePicker();
-        }
-    }
-
-    private String getSanitizedBaseName(String title) {
-        String name = title.replaceAll("(?i)\\.(txt|savage|md|json)$", "");
-        return name.replaceAll("[^a-zA-Z0-9.-]", "_");
-    }
-
-    private void launchTextFilePicker() {
-        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("text/plain");
-        intent.putExtra(Intent.EXTRA_TITLE, getSanitizedBaseName(noteToExport.title) + ".txt");
-        startActivityForResult(intent, REQUEST_CODE_CREATE_FILE);
-    }
-
-    private String formatNoteForExport(DatabaseHelper.Note note) {
-        String content = note.content;
-        if (note.isLocked == 1) {
-            try { content = SecurityCore.decrypt(note.content); } catch (Exception e) { return "Erro ao descriptografar."; }
-        }
-
-        if (note.type == 1) { // Checklist
-            StringBuilder sb = new StringBuilder();
-            for (String line : content.split("\n")) {
-                if (line.contains("::")) {
-                    String[] parts = line.split("::");
-                    sb.append(parts.length > 1 && parts[1].equals("1") ? "[x] " : "[ ] ").append(parts[0]).append("\n");
-                }
-            }
-            return note.title + "\n\n" + sb.toString();
-        }
-        return note.title + "\n\n" + content;
-    }
-
-    private void authenticateForAction(DatabaseHelper.Note note, java.util.function.Consumer<DatabaseHelper.Note> action) {
-        securityManager.authenticate(this, "Autenticação", "Autentique-se para continuar", new SecurityManager.AuthCallback() {
-            @Override public void onAuthenticated() { action.accept(note); }
-            @Override public void onError(String error) { Toast.makeText(MainActivity.this, "Erro: " + error, Toast.LENGTH_SHORT).show(); }
-        });
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == RESULT_OK && data != null && data.getData() != null) {
-            if (requestCode == REQUEST_CODE_CREATE_FILE) {
-                try {
-                    String content = formatNoteForExport(noteToExport);
-                    java.io.OutputStream os = getContentResolver().openOutputStream(data.getData());
-                    os.write(content.getBytes());
-                    os.close();
-                    Toast.makeText(this, "Arquivo salvo com sucesso!", Toast.LENGTH_SHORT).show();
-                } catch (Exception e) {
-                    Toast.makeText(this, "Erro ao salvar arquivo: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                }
-            } else if (requestCode == REQUEST_CODE_CREATE_FILE + 1) {
-                try {
-                    String content = formatNoteForExport(noteToExport);
-                    String encrypted = SecurityHelper.encryptForSharing("NOTARA_SECURE_NOTE\nTITLE: " + noteToExport.title + "\nCONTENT: " + content, secureExportPassword);
-                    java.io.OutputStream os = getContentResolver().openOutputStream(data.getData());
-                    os.write(encrypted.getBytes());
-                    os.close();
-                    Toast.makeText(this, "Arquivo .savage protegido salvo!", Toast.LENGTH_SHORT).show();
-                } catch (Exception e) {
-                    Toast.makeText(this, "Erro na criptografia: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                }
-            }
-        }
-    }
     private void shareNoteSecurely(DatabaseHelper.Note note) {
         if (note.isLocked == 1) {
             securityManager.authenticate(this,
@@ -504,55 +329,22 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        setIntent(intent);
-        handleIncomingIntent();
-    }
-
     private void handleIncomingIntent() {
         Intent intent = getIntent();
-        if (intent == null) return;
-        
         String action = intent.getAction();
-        
-        // Trata Compartilhamento (SEND)
-        if (Intent.ACTION_SEND.equals(action) && "text/plain".equals(intent.getType())) {
-            String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
-            if (sharedText != null && sharedText.contains("PACOTE:")) {
-                String[] parts = sharedText.split("PACOTE:\n");
-                if (parts.length > 1) promptForDecryptPassword(parts[1].trim());
-            }
-        } 
-        // Trata Abrir Arquivo (VIEW)
-        else if (Intent.ACTION_VIEW.equals(action) && intent.getData() != null) {
-            handleIncomingFile(intent.getData());
-        }
-    }
+        String type = intent.getType();
 
-    private void handleIncomingFile(android.net.Uri fileUri) {
-        try {
-            java.io.InputStream inputStream = getContentResolver().openInputStream(fileUri);
-            java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(inputStream));
-            StringBuilder content = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) content.append(line).append('\n');
-            inputStream.close();
-            String finalData = content.toString();
-
-            // Se for .savage, tenta descriptografar
-            if (fileUri.toString().endsWith(".savage")) {
-                promptForDecryptPassword(finalData.trim());
-            } else {
-                // Importação simples .txt
-                DatabaseHelper.Note newNote = new DatabaseHelper.Note(-1, "Nota Importada", finalData, 0, 1, 0, 0, null, 0, 0, 0, null, 0, 0, System.currentTimeMillis(), 0);
-                viewModel.addNote(newNote);
-                Toast.makeText(this, "Arquivo .txt importado!", Toast.LENGTH_SHORT).show();
-                viewModel.refreshNotes();
+        if (Intent.ACTION_SEND.equals(action) && type != null) {
+            if ("text/plain".equals(type)) {
+                String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
+                if (sharedText != null && sharedText.contains("PACOTE:")) {
+                    String[] parts = sharedText.split("PACOTE:\n");
+                    if (parts.length > 1) {
+                        String encodedPackage = parts[1].trim();
+                        promptForDecryptPassword(encodedPackage);
+                    }
+                }
             }
-        } catch (Exception e) {
-            Toast.makeText(this, "Erro ao processar arquivo: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -587,6 +379,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             String decrypted = SecurityHelper.decryptFromSharing(encodedPackage, password);
             if (decrypted.startsWith("NOTARA_SECURE_NOTE")) {
+                // Parse simples
                 String title = "Nota Importada";
                 String content = "";
                 
@@ -597,26 +390,16 @@ public class MainActivity extends AppCompatActivity {
                 }
                 
                 if (content.isEmpty() && lines.length > 2) {
+                    // Tenta capturar conteúdo multilinhas se necessário
                     int contentIdx = decrypted.indexOf("CONTENT: ");
                     if (contentIdx != -1) content = decrypted.substring(contentIdx + 9);
                 }
 
-                // Cria uma referência temporária para confirmar com o usuário
-                final String finalTitle = title;
-                final String finalContent = content;
-
-                new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                    .setTitle("Importar Nota")
-                    .setMessage("Deseja importar a nota '" + finalTitle + "' e trancá-la com segurança?")
-                    .setPositiveButton("Sim, importar e trancar", (d, w) -> {
-                        // isLocked = 1 para trancar
-                        DatabaseHelper.Note newNote = new DatabaseHelper.Note(-1, finalTitle, finalContent, 0, 1, 0, 0, null, 0, 0, 0, null, 1, 0, System.currentTimeMillis(), 0);
-                        viewModel.addNote(newNote);
-                        Toast.makeText(this, "Nota importada e trancada!", Toast.LENGTH_SHORT).show();
-                        viewModel.refreshNotes();
-                    })
-                    .setNegativeButton("Cancelar", null)
-                    .show();
+                // Salva no banco
+                DatabaseHelper.Note newNote = new DatabaseHelper.Note(-1, title, content, 0, 1, 0, 0, null, 0, 0, 0, null, 0, 0, System.currentTimeMillis(), 0);
+                viewModel.addNote(newNote);
+                Toast.makeText(this, "Nota importada com sucesso!", Toast.LENGTH_SHORT).show();
+                viewModel.refreshNotes();
             }
         } catch (javax.crypto.AEADBadTagException e) {
             Toast.makeText(this, "Senha incorreta ou pacote corrompido.", Toast.LENGTH_LONG).show();

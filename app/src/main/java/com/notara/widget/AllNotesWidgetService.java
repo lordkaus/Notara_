@@ -2,6 +2,7 @@ package com.notara.widget;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
@@ -10,6 +11,7 @@ import com.notara.NoteRepository;
 import com.notara.NoteRepositoryImpl;
 import com.notara.DatabaseHelper;
 import com.notara.R;
+import com.notara.SettingsManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,9 +56,13 @@ public class AllNotesWidgetService extends RemoteViewsService {
             DatabaseHelper.Note note = notes.get(position);
             RemoteViews views = new RemoteViews(context.getPackageName(), android.R.layout.simple_list_item_1);
             
-            String title = note.isLocked == 1 ? "* Nota Protegida" : (note.title.isEmpty() ? "(Sem título)" : note.title);
+            String title = note.isLocked == 1 ? "* Nota Protegida" : (note.title.isEmpty() ? com.notara.DatabaseHelper.Note.extractTitle(note.content) : note.title);
             views.setTextViewText(android.R.id.text1, title);
-            views.setTextColor(android.R.id.text1, 0xFFFFFFFF);
+            
+            SettingsManager settings = new SettingsManager(context);
+            int currentTheme = settings.getTheme();
+            boolean isDarkTheme = (currentTheme == 1 || currentTheme == 2);
+            views.setTextColor(android.R.id.text1, isDarkTheme ? 0xFFE0E0E0 : Color.DKGRAY);
             views.setTextViewTextSize(android.R.id.text1, android.util.TypedValue.COMPLEX_UNIT_SP, 13);
 
             // Intent para abrir a nota ao clicar

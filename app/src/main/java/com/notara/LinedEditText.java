@@ -10,20 +10,30 @@ import androidx.appcompat.widget.AppCompatEditText;
 public class LinedEditText extends AppCompatEditText {
     private Rect mRect;
     private Paint mPaint;
+    private Paint mMarginPaint;
+    private float density;
 
     public LinedEditText(Context context, AttributeSet attrs) {
         super(context, attrs);
         mRect = new Rect();
+        density = context.getResources().getDisplayMetrics().density;
+
+        // Linhas Horizontais
         mPaint = new Paint();
         mPaint.setStyle(Paint.Style.STROKE);
-        mPaint.setStrokeWidth(2.5f); // Espessura ligeiramente maior e uniforme
+        mPaint.setStrokeWidth(Math.max(1f, 1.0f * density)); 
         mPaint.setAntiAlias(true);
-        // Amarelo mais visível por padrão (opacidade 0x73 = ~45%)
-        mPaint.setColor(0x73FFEB3B); 
+        mPaint.setColor(0x66CCCCCC); // cinza mais visível (40% opaco)
+
+        // Linha de Margem Vertical (invisível)
+        mMarginPaint = new Paint();
+        mMarginPaint.setStyle(Paint.Style.STROKE);
+        mMarginPaint.setStrokeWidth(Math.max(1f, 0.8f * density));
+        mMarginPaint.setAntiAlias(true);
+        mMarginPaint.setColor(0x00FF5252); // completamente transparente 
     }
 
     public void setLineColor(int color) {
-        // Aplica a cor com 45% de opacidade (0x73) para ser "discreto mas visível"
         mPaint.setColor((color & 0x00FFFFFF) | 0x73000000);
         invalidate();
     }
@@ -41,13 +51,13 @@ public class LinedEditText extends AppCompatEditText {
         Rect r = mRect;
         Paint paint = mPaint;
         
-        // Pega a posição base da primeira linha
-        int baseline = getLineBounds(0, r);
+        // Margem Vertical removida
 
-        // Desenha as linhas com precisão uniforme
+        int baseline = getLineBounds(0, r);
+        float offset = (getLineHeight() - getTextSize()) / 2 + 2 * density;
+
         for (int i = 0; i < numberOfLines; i++) {
-            // Desenha a linha exatamente na mesma posição relativa ao texto
-            canvas.drawLine(r.left, baseline + 12, r.right, baseline + 12, paint);
+            canvas.drawLine(r.left, baseline + offset, r.right, baseline + offset, paint);
             baseline += lineHeight;
         }
 

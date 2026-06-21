@@ -3,16 +3,18 @@
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:padding="3dp"
     android:orientation="vertical"
     android:background="@drawable/widget_background">
 
-    <View
+    <FrameLayout
         android:id="@+id/widget_color_bar"
         android:layout_width="match_parent"
         android:layout_height="4dp"
         android:background="#4DB6AC" />
 
     <LinearLayout
+        android:id="@+id/widget_content_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"

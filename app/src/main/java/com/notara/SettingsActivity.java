@@ -72,7 +72,7 @@ public class SettingsActivity extends AppCompatActivity {
                     case 4: rec = " (Anual)"; break;
                     case 5: rec = " (Personalizada)"; break;
                 }
-                titles[i] = prefix + (note.title.isEmpty() ? "(Sem título)" : note.title) + rec;
+                titles[i] = prefix + (note.title.isEmpty() ? DatabaseHelper.Note.extractTitle(note.content) : note.title) + rec;
             }
 
             new MaterialAlertDialogBuilder(this)

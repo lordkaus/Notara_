@@ -42,7 +42,7 @@ public class WidgetConfigActivity extends AppCompatActivity {
         
         String[] titles = new String[notes.size()];
         for (int i = 0; i < notes.size(); i++) {
-            titles[i] = notes.get(i).title.isEmpty() ? "(Sem título)" : notes.get(i).title;
+            titles[i] = notes.get(i).title.isEmpty() ? com.notara.DatabaseHelper.Note.extractTitle(notes.get(i).content) : notes.get(i).title;
         }
 
         ListView lv = new ListView(this);

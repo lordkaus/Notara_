@@ -100,53 +100,57 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
         // Usa a paleta sincronizada
         int color = getNoteColor(note.color);
         int cardStyle = settings.getCardStyle();
-        int transparency = settings.getTransparency();
-        int alpha = (int) (transparency * 2.55); // 0-255
+        int currentTheme = settings.getTheme();
+        boolean isDarkTheme = (currentTheme == 1 || currentTheme == 2);
+        int alpha = 51; // 20% fixo
+        float[] hsl = new float[3];
+        androidx.core.graphics.ColorUtils.colorToHSL(color, hsl);
+        hsl[1] *= 0.4f;
+        hsl[2] = isDarkTheme ? 0.15f : 0.9f;
+        int pastelColor = androidx.core.graphics.ColorUtils.HSLToColor(hsl);
+        int pastelWithAlpha = Color.argb(alpha, Color.red(pastelColor), Color.green(pastelColor), Color.blue(pastelColor));
 
         if (cardStyle == 1) { // Pastel
             holder.binding.colorBar.setVisibility(View.GONE);
-            float[] hsl = new float[3];
-            androidx.core.graphics.ColorUtils.colorToHSL(color, hsl);
-            hsl[1] *= 0.4f; // Reduz saturação
-            hsl[2] = 0.9f; // Alta luminosidade
-            int baseColor = androidx.core.graphics.ColorUtils.HSLToColor(hsl);
-            int pastelWithAlpha = Color.argb(alpha, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor));
-            
             holder.binding.cardNote.setCardBackgroundColor(pastelWithAlpha);
-            holder.binding.tvTitle.setTextColor(0xFF333333);
-            holder.binding.tvContent.setTextColor(0xFF555555);
             holder.binding.cardNote.setStrokeWidth(0);
+            int textColor = isDarkTheme ? Color.WHITE : 0xFF333333;
+            int subColor = isDarkTheme ? 0xFFE0E0E0 : 0xFF555555;
+            holder.binding.tvTitle.setTextColor(textColor);
+            holder.binding.tvContent.setTextColor(subColor);
         } else if (cardStyle == 2) { // Solid
             holder.binding.colorBar.setVisibility(View.GONE);
             int solidWithAlpha = Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color));
-            
             holder.binding.cardNote.setCardBackgroundColor(solidWithAlpha);
-            holder.binding.tvTitle.setTextColor(Color.BLACK); // Letras pretas conforme solicitado
-            holder.binding.tvContent.setTextColor(0xFF222222);
             holder.binding.cardNote.setStrokeWidth(0);
+            int textColor = isDarkTheme ? Color.WHITE : Color.BLACK; 
+            int subColor = isDarkTheme ? 0xFFE0E0E0 : 0xFF222222;
+            holder.binding.tvTitle.setTextColor(textColor);
+            holder.binding.tvContent.setTextColor(subColor);
         } else { // Label (Padrão)
-            holder.binding.colorBar.setVisibility(View.VISIBLE);
-            holder.binding.colorBar.setBackgroundColor(color);
-            
-            // Fundo do card com transparência do usuário, mas texto opaco
-            int surfaceColor = getThemeColor(holder.itemView.getContext(), android.R.attr.colorBackground);
-            int labelBgWithAlpha = Color.argb(alpha, Color.red(surfaceColor), Color.green(surfaceColor), Color.blue(surfaceColor));
-            
-            holder.binding.cardNote.setCardBackgroundColor(labelBgWithAlpha);
-            
-            // Verifica luminosidade do fundo para definir cor do texto
-            double luminance = androidx.core.graphics.ColorUtils.calculateLuminance(surfaceColor);
-            int textColor = (luminance > 0.5) ? Color.BLACK : Color.WHITE;
-            int subColor = (luminance > 0.5) ? Color.DKGRAY : Color.LTGRAY;
-            
-            holder.binding.tvTitle.setTextColor(textColor | 0xFF000000);
-            holder.binding.tvContent.setTextColor(subColor | 0xFF000000);
-            holder.binding.cardNote.setStrokeWidth(1);
+            holder.binding.colorBar.setVisibility(View.GONE);
+            int baseColor = isDarkTheme ? Color.parseColor("#4b4d4b") : Color.parseColor("#b4b2b4");
+            int blendR = (int)(Color.red(baseColor) * 0.8f + Color.red(color) * 0.2f);
+            int blendG = (int)(Color.green(baseColor) * 0.8f + Color.green(color) * 0.2f);
+            int blendB = (int)(Color.blue(baseColor) * 0.8f + Color.blue(color) * 0.2f);
+            int blendedColor = Color.rgb(blendR, blendG, blendB);
+            int bgColor = Color.argb(alpha, Color.red(blendedColor), Color.green(blendedColor), Color.blue(blendedColor));
+            holder.binding.cardNote.setCardBackgroundColor(bgColor);
+            holder.binding.cardNote.setStrokeColor(color);
+            holder.binding.cardNote.setStrokeWidth(3);
+            int textColor = isDarkTheme ? Color.WHITE : Color.BLACK;
+            int subColor = isDarkTheme ? 0xFFE0E0E0 : Color.DKGRAY;
+            holder.binding.tvTitle.setTextColor(textColor);
+            holder.binding.tvContent.setTextColor(subColor);
         }
 
         holder.itemView.setOnClickListener(v -> {
-            Intent intent = new Intent(v.getContext(), note.type == 1 ? ChecklistActivity.class : EditActivity.class);
-            intent.putExtra("NOTE_ID", note.id);
+            DatabaseHelper.Note noteData = notes.get(holder.getBindingAdapterPosition());
+            Intent intent = new Intent(v.getContext(), noteData.type == 1 ? ChecklistActivity.class : EditActivity.class);
+            intent.putExtra("NOTE_ID", noteData.id);
+            if (noteData.id != -1) {
+                intent.putExtra("PREVIEW_MODE", true);
+            }
             v.getContext().startActivity(intent);
         });
 

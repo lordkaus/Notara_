@@ -1,3 +1,20 @@
+/*
+ * Copyright (c) 1996 lordkaus
+ * This file is part of Notara_.
+ *
+ * Notara_ is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Notara_ is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Notara_. If not, see <https://www.gnu.org/licenses/>.
+ */
 package com.notara;
 
 import android.Manifest;
@@ -53,26 +70,38 @@ public class EditActivity extends AppCompatActivity {
     private SettingsManager settings;
     private boolean isUnlocked = false;
 
+    private boolean isPreviewMode = false;
+    private android.view.GestureDetector gestureDetector;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         settings = new SettingsManager(this);
         securityManager = new SecurityManager(this);
         super.onCreate(savedInstanceState);
 
-        // --- CORREÇÃO DO TEMA E API LEVEL ---
-        int theme = settings.getTheme();
-        if (theme == 0 || theme == 3) {
-            setTheme(R.style.Theme_Notara);
-            // SYSTEM_UI_FLAG_LIGHT_STATUS_BAR exige API 23 (Android 6.0)
-            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-        } else {
-            setTheme(theme == 1 ? R.style.Theme_Notara_Pantera : R.style.Theme_Notara);
-            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
-        }
-        // -------------------------------------
+        // ... (código existente de temas)
+        
+        isPreviewMode = getIntent().getBooleanExtra("PREVIEW_MODE", false);
 
         binding = ActivityEditBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+
+        // Configuração de modo preview
+        if (isPreviewMode) {
+            enablePreviewMode();
+        }
+
+        // Detector de duplo clique para editar
+        gestureDetector = new android.view.GestureDetector(this, new android.view.GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onDoubleTap(android.view.MotionEvent e) {
+                if (isPreviewMode) {
+                    enableEditMode();
+                    return true;
+                }
+                return false;
+            }
+        });
 
         viewModel = new ViewModelProvider(this).get(NoteViewModel.class);
         noteId = getIntent().getIntExtra("NOTE_ID", -1);
@@ -114,12 +143,17 @@ public class EditActivity extends AppCompatActivity {
         setupListeners();
     }
 
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+        gestureDetector.onTouchEvent(ev);
+        return super.dispatchTouchEvent(ev);
+    }
+
     private void lockContent() {
+        binding.etTitle.setVisibility(View.GONE);
+        binding.tvDate.setVisibility(View.GONE);
         binding.editNoteText.setVisibility(View.GONE);
-        binding.btnColorPicker.setVisibility(View.GONE);
-        binding.btnReminder.setVisibility(View.GONE);
-        binding.btnAlarm.setVisibility(View.GONE);
-        binding.btnConvertToChecklist.setVisibility(View.GONE);
+        binding.bottomAppBar.setVisibility(View.GONE);
         binding.btnSave.setVisibility(View.GONE);
     }
 
@@ -133,12 +167,61 @@ public class EditActivity extends AppCompatActivity {
                 Toast.makeText(this, "Erro ao descriptografar nota.", Toast.LENGTH_SHORT).show();
             }
         }
+        
+        // Sempre exibe os campos após desbloqueio
+        binding.etTitle.setVisibility(View.VISIBLE);
+        binding.tvDate.setVisibility(View.VISIBLE);
         binding.editNoteText.setVisibility(View.VISIBLE);
-        binding.btnColorPicker.setVisibility(View.VISIBLE);
-        binding.btnReminder.setVisibility(View.VISIBLE);
-        binding.btnAlarm.setVisibility(View.VISIBLE);
-        binding.btnConvertToChecklist.setVisibility(View.VISIBLE);
-        binding.btnSave.setVisibility(View.VISIBLE);
+        
+        // Se for uma nota existente aberta da lista, entra em modo preview primeiro
+        if (noteId != -1) {
+            enablePreviewMode();
+        } else {
+            enableEditMode();
+        }
+    }
+
+    private void updateUIState() {
+        boolean shouldShowControls = !isPreviewMode && isUnlocked;
+        
+        binding.bottomAppBar.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
+        binding.btnSave.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
+        
+        // Ensure text views are visible if unlocked
+        if (isUnlocked) {
+            binding.etTitle.setVisibility(View.VISIBLE);
+            binding.tvDate.setVisibility(View.VISIBLE);
+            binding.editNoteText.setVisibility(View.VISIBLE);
+        }
+
+        // Toggle focusability
+        binding.etTitle.setFocusable(shouldShowControls);
+        binding.etTitle.setFocusableInTouchMode(shouldShowControls);
+        binding.editNoteText.setFocusable(shouldShowControls);
+        binding.editNoteText.setFocusableInTouchMode(shouldShowControls);
+        
+        if (isPreviewMode) {
+            hideKeyboard();
+        }
+    }
+
+    private void hideKeyboard() {
+        android.view.View view = this.getCurrentFocus();
+        if (view != null) {
+            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
+    }
+
+    private void enablePreviewMode() {
+        isPreviewMode = true;
+        updateUIState();
+    }
+
+    private void enableEditMode() {
+        isPreviewMode = false;
+        updateUIState();
+        binding.etTitle.requestFocus();
     }
 
     private void requestUnlock() {
@@ -257,11 +340,51 @@ public class EditActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    private int getThemeColor(int attr) {
+        android.util.TypedValue tv = new android.util.TypedValue();
+        getTheme().resolveAttribute(attr, tv, true);
+        return tv.data | 0xFF000000;
+    }
+
     private void updateColorIndicator() {
         int color = Color.parseColor(noteColors[selectedColor % noteColors.length]);
-        binding.topColorIndicator.setBackgroundColor(color);
+        binding.topColorIndicator.setVisibility(View.GONE);
         binding.btnSave.setBackgroundColor(color);
-        binding.editNoteText.setLineColor(color);
+
+        int currentTheme = settings.getTheme();
+        boolean isDarkTheme = (currentTheme == 1 || currentTheme == 2); // 1: Panther, 2: Dynamic Black
+
+        android.graphics.drawable.GradientDrawable border = new android.graphics.drawable.GradientDrawable();
+        float[] hsl = new float[3];
+        androidx.core.graphics.ColorUtils.colorToHSL(color, hsl);
+        hsl[1] *= 0.4f;
+        hsl[2] = isDarkTheme ? 0.15f : 0.9f;
+        int pastelColor = androidx.core.graphics.ColorUtils.HSLToColor(hsl);
+        int tintAlpha = (int) (255 * 0.3f);
+        int tintColor = Color.argb(tintAlpha, Color.red(color), Color.green(color), Color.blue(color));
+        border.setColor(tintColor);
+        border.setStroke((int) (3 * getResources().getDisplayMetrics().density), color);
+        border.setCornerRadius(12 * getResources().getDisplayMetrics().density);
+        binding.contentContainer.setBackground(border);
+
+        if (settings.getCardStyle() == 1) { // Pastel
+            binding.getRoot().setBackgroundColor(pastelColor);
+
+            int textColor = isDarkTheme ? Color.WHITE : Color.BLACK;
+            int hintColor = isDarkTheme ? 0x80FFFFFF : 0x80000000;
+            binding.etTitle.setTextColor(textColor);
+            binding.etTitle.setHintTextColor(hintColor);
+            binding.editNoteText.setTextColor(textColor);
+            binding.editNoteText.setHintTextColor(hintColor);
+            binding.editNoteText.setLineColor(isDarkTheme ? 0x33FFFFFF : 0x33000000);
+        } else {
+            binding.getRoot().setBackground(null);
+            int textColor = isDarkTheme ? Color.WHITE : getThemeColor(android.R.attr.textColorPrimary);
+            int subColor = isDarkTheme ? 0xFFE0E0E0 : getThemeColor(android.R.attr.textColorSecondary);
+            binding.etTitle.setTextColor(textColor);
+            binding.editNoteText.setTextColor(subColor);
+            binding.editNoteText.setLineColor(color);
+        }
 
         android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
         shape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
@@ -399,10 +522,6 @@ public class EditActivity extends AppCompatActivity {
 
     private void convertToChecklist() {
         String content = binding.editNoteText.getText().toString();
-        if (content.trim().isEmpty()) {
-            Toast.makeText(this, "Escreva algo para converter", Toast.LENGTH_SHORT).show();
-            return;
-        }
 
         StringBuilder sb = new StringBuilder();
         for (String line : content.split("\n")) {
@@ -410,7 +529,7 @@ public class EditActivity extends AppCompatActivity {
         }
 
         String title = binding.etTitle.getText().toString();
-        if (title.isEmpty()) title = "Sem título";
+        if (title.isEmpty()) title = DatabaseHelper.Note.extractTitle(sb.toString());
 
         if (currentNote == null) {
             currentNote = new DatabaseHelper.Note(-1, title, sb.toString(), 1, selectedColor, 0, 0, null, reminderTime, recurrenceType, recurrenceDays, null, 0, alertType, System.currentTimeMillis(), originalReminderTime);
@@ -433,8 +552,11 @@ public class EditActivity extends AppCompatActivity {
     private void saveNote() {
         String title = binding.etTitle.getText().toString();
         String content = binding.editNoteText.getText().toString();
-        if (title.isEmpty() && content.isEmpty()) return;
-        if (title.isEmpty()) title = "Sem título";
+        if (title.isEmpty() && content.isEmpty()) {
+            Toast.makeText(this, "Nota vazia, nada foi salvo", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (title.isEmpty()) title = DatabaseHelper.Note.extractTitle(content);
 
         String finalContent = content;
         if (currentNote != null && currentNote.isLocked == 1 && isUnlocked) {

@@ -174,9 +174,22 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             return ghost;
         }
 
+        public static String extractTitle(String content) {
+            if (content == null || content.trim().isEmpty()) return "Sem título";
+            for (String line : content.split("\n")) {
+                line = line.trim();
+                if (!line.isEmpty()) {
+                    if (line.length() > 50) line = line.substring(0, 50) + "…";
+                    return line;
+                }
+            }
+            String[] words = content.trim().split("\\s+");
+            int limit = Math.min(3, words.length);
+            return String.join(" ", java.util.Arrays.copyOf(words, limit));
+        }
+
         public java.time.LocalDate getLocalDate() {
             long time = originalReminderTime > 0 ? originalReminderTime : reminderTime;
-            // Usa o fuso horário do sistema para garantir que o "dia" seja o mesmo que o usuário vê
             return java.time.Instant.ofEpochMilli(time).atZone(java.time.ZoneId.systemDefault()).toLocalDate();
         }
     }

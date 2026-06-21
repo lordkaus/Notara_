@@ -31,7 +31,7 @@ public class SettingsManager {
     public int getCardStyle() { return prefs.getInt(KEY_CARD_STYLE, 0); }
     public void setCardStyle(int style) { prefs.edit().putInt(KEY_CARD_STYLE, style).apply(); notifyObservers(); }
 
-    public int getBgTheme() { return prefs.getInt(KEY_BG_THEME, 0); }
+    public int getBgTheme() { return prefs.getInt(KEY_BG_THEME, 2); }
     public void setBgTheme(int theme) { prefs.edit().putInt(KEY_BG_THEME, theme).apply(); notifyObservers(); }
 
     public int getTransparency() { return prefs.getInt(KEY_TRANSPARENCY, 100); }
@@ -46,7 +46,7 @@ public class SettingsManager {
     public boolean isUniformGridEnabled() { return prefs.getBoolean(KEY_UNIFORM_GRID, true); }
     public void setUniformGridEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_UNIFORM_GRID, enabled).apply(); notifyObservers(); }
 
-    public int getTheme() { return prefs.getInt(KEY_THEME, 0); } // 0: Light, 1: Panther, 2: Dynamic Black, 3: Dynamic Light
+    public int getTheme() { return prefs.getInt(KEY_THEME, 2); } // 0: Light, 1: Panther, 2: Dynamic Black, 3: Dynamic Light
     public void setTheme(int theme) { prefs.edit().putInt(KEY_THEME, theme).apply(); notifyObservers(); }
 
     public boolean isBiometricEnabled() { return prefs.getBoolean(KEY_BIOMETRIC_ENABLED, false); }

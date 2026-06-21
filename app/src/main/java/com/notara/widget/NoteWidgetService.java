@@ -10,6 +10,7 @@ import com.notara.NoteRepository;
 import com.notara.NoteRepositoryImpl;
 import com.notara.DatabaseHelper;
 import com.notara.R;
+import com.notara.SettingsManager;
 
 import java.util.ArrayList;
 import java.util.List;

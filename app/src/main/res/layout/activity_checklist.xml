@@ -18,10 +18,12 @@
             android:id="@+id/topColorIndicator"
             android:layout_width="match_parent"
             android:layout_height="4dp"
-            android:background="?attr/colorPrimary" />
+            android:background="?attr/colorPrimary"
+            android:visibility="gone" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <LinearLayout
+        android:id="@+id/contentContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
@@ -74,14 +76,30 @@
                 android:background="@null" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvChecklist"
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:layout_marginTop="8dp"
-            android:paddingBottom="100dp"
-            android:clipToPadding="false" />
+            android:layout_marginTop="8dp">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvChecklist"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:paddingBottom="100dp"
+                android:clipToPadding="false" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/tvEmptyHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="32dp"
+            android:text="Clique duplo para adicionar lista"
+            android:alpha="0.7"
+            android:textSize="14sp"
+            android:visibility="gone" />
     </LinearLayout>
 
     <com.google.android.material.bottomappbar.BottomAppBar

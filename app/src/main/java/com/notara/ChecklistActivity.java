@@ -1,6 +1,24 @@
+/*
+ * Copyright (c) 1996 lordkaus
+ * This file is part of Notara_.
+ *
+ * Notara_ is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Notara_ is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Notara_. If not, see <https://www.gnu.org/licenses/>.
+ */
 package com.notara;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.content.Context;
@@ -61,6 +79,8 @@ public class ChecklistActivity extends AppCompatActivity {
 
     private SettingsManager settings;
     private boolean isUnlocked = false;
+    private boolean isPreviewMode = false;
+    private android.view.GestureDetector gestureDetector;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,14 +102,25 @@ public class ChecklistActivity extends AppCompatActivity {
         binding = ActivityChecklistBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        isPreviewMode = getIntent().getBooleanExtra("PREVIEW_MODE", false);
+
+        // Detector de duplo clique
+        gestureDetector = new android.view.GestureDetector(this, new android.view.GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onDoubleTap(android.view.MotionEvent e) {
+                enableEditMode();
+                return true;
+            }
+        });
+
         viewModel = new ViewModelProvider(this).get(NoteViewModel.class);
         noteId = getIntent().getIntExtra("NOTE_ID", -1);
 
         if (noteId == -1) {
             reminderTime = getIntent().getLongExtra("INITIAL_REMINDER_TIME", 0);
-        }
-
-        if (noteId != -1) {
+            isUnlocked = true;
+            enableEditMode();
+        } else {
             currentNote = viewModel.getNote(noteId);
             if (currentNote != null) {
                 binding.etChecklistTitle.setText(currentNote.title);
@@ -104,15 +135,26 @@ public class ChecklistActivity extends AppCompatActivity {
                     requestUnlock();
                 } else {
                     isUnlocked = true;
+                    enablePreviewMode();
                 }
             }
         }
+
+        binding.getRoot().post(() -> {
+            if (isPreviewMode) hideKeyboard();
+        });
 
         requestPermissions();
         updateColorIndicator();
         setupDate();
         setupRecyclerView();
         setupListeners();
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+        gestureDetector.onTouchEvent(ev);
+        return super.dispatchTouchEvent(ev);
     }
 
     private void lockContent() {
@@ -131,18 +173,69 @@ public class ChecklistActivity extends AppCompatActivity {
             try {
                 String decrypted = SecurityCore.decrypt(currentNote.content);
                 parseContent(decrypted);
-                adapter.notifyItemRangeInserted(0, items.size());
             } catch (Exception e) {
                 Toast.makeText(this, "Erro ao descriptografar lista.", Toast.LENGTH_SHORT).show();
             }
         }
-        binding.rvChecklist.setVisibility(View.VISIBLE);
-        binding.tilNewItem.setVisibility(View.VISIBLE);
-        binding.btnChecklistColorPicker.setVisibility(View.VISIBLE);
-        binding.btnChecklistReminder.setVisibility(View.VISIBLE);
-        binding.btnChecklistAlarm.setVisibility(View.VISIBLE);
-        binding.btnConvertToText.setVisibility(View.VISIBLE);
-        binding.btnSaveChecklist.setVisibility(View.VISIBLE);
+        
+        if (noteId != -1) {
+            enablePreviewMode();
+        } else {
+            enableEditMode();
+        }
+    }
+
+    private void updateUIState() {
+        boolean shouldShowControls = !isPreviewMode && isUnlocked;
+        
+        binding.bottomAppBar.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
+        binding.btnSaveChecklist.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
+        binding.tilNewItem.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
+        
+        if (isUnlocked) {
+            binding.rvChecklist.setVisibility(View.VISIBLE);
+            binding.etChecklistTitle.setVisibility(View.VISIBLE);
+            
+            updateEmptyView();
+        }
+
+        binding.etChecklistTitle.setFocusable(shouldShowControls);
+        binding.etChecklistTitle.setFocusableInTouchMode(shouldShowControls);
+        
+        if (isPreviewMode) {
+            hideKeyboard();
+        }
+        
+        if (adapter != null) {
+            adapter.notifyItemRangeChanged(0, items.size());
+        }
+    }
+
+    private void updateEmptyView() {
+        if (isUnlocked && isPreviewMode) {
+            binding.tvEmptyHint.setVisibility(items.isEmpty() ? View.VISIBLE : View.GONE);
+        } else {
+            binding.tvEmptyHint.setVisibility(View.GONE);
+        }
+    }
+
+    private void hideKeyboard() {
+        View view = this.getCurrentFocus();
+        if (view != null) {
+            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
+    }
+
+    private void enablePreviewMode() {
+        isPreviewMode = true;
+        updateUIState();
+    }
+
+    private void enableEditMode() {
+        isPreviewMode = false;
+        updateUIState();
+        binding.etChecklistTitle.requestFocus();
     }
 
     private void requestUnlock() {
@@ -423,6 +516,8 @@ public class ChecklistActivity extends AppCompatActivity {
             adapter.notifyItemInserted(items.size() - 1);
             binding.rvChecklist.scrollToPosition(items.size() - 1);
             binding.etNewItem.setText("");
+            updateEmptyView();
+            updateUIState();
         }
     }
 
@@ -436,14 +531,19 @@ public class ChecklistActivity extends AppCompatActivity {
                 } else if (!s.trim().isEmpty()) items.add(new CheckItem(s.trim(), false));
             }
         }
+        updateEmptyView();
+        updateUIState();
     }
 
     private void save() {
         String title = binding.etChecklistTitle.getText().toString();
         StringBuilder sb = new StringBuilder();
         for (CheckItem i : items) sb.append(i.name).append("::").append(i.checked ? "1" : "0").append("\n");
-        if (title.isEmpty() && items.isEmpty()) return;
-        if (title.isEmpty()) title = "Sem título";
+        if (title.isEmpty() && items.isEmpty()) {
+            Toast.makeText(this, "Lista vazia, nada foi salvo", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (title.isEmpty()) title = DatabaseHelper.Note.extractTitle(sb.toString());
 
         String finalContent = sb.toString();
         if (currentNote != null && currentNote.isLocked == 1 && isUnlocked) {
@@ -510,16 +610,60 @@ public class ChecklistActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    private int getThemeColor(int attr) {
+        android.util.TypedValue tv = new android.util.TypedValue();
+        getTheme().resolveAttribute(attr, tv, true);
+        return tv.data | 0xFF000000;
+    }
+
     private void updateColorIndicator() {
         int color = Color.parseColor(EditActivity.noteColors[selectedColor % EditActivity.noteColors.length]);
-        binding.topColorIndicator.setBackgroundColor(color);
+        binding.topColorIndicator.setVisibility(View.GONE);
         binding.btnSaveChecklist.setBackgroundColor(color);
+
+        int currentTheme = settings.getTheme();
+        boolean isDarkTheme = (currentTheme == 1 || currentTheme == 2); // 1: Panther, 2: Dynamic Black
+
+        android.graphics.drawable.GradientDrawable border = new android.graphics.drawable.GradientDrawable();
+        float[] hsl = new float[3];
+        androidx.core.graphics.ColorUtils.colorToHSL(color, hsl);
+        hsl[1] *= 0.4f;
+        hsl[2] = isDarkTheme ? 0.15f : 0.9f;
+        int pastelColor = androidx.core.graphics.ColorUtils.HSLToColor(hsl);
+        int tintAlpha = (int) (255 * 0.3f);
+        int tintColor = Color.argb(tintAlpha, Color.red(color), Color.green(color), Color.blue(color));
+        border.setColor(tintColor);
+        border.setStroke((int) (3 * getResources().getDisplayMetrics().density), color);
+        border.setCornerRadius(12 * getResources().getDisplayMetrics().density);
+        binding.contentContainer.setBackground(border);
+
+        if (settings.getCardStyle() == 1) { // Pastel
+            binding.getRoot().setBackgroundColor(pastelColor);
+
+            int textColor = isDarkTheme ? Color.WHITE : Color.BLACK;
+            int hintColor = isDarkTheme ? 0x80FFFFFF : 0x80000000;
+            binding.etChecklistTitle.setTextColor(textColor);
+            binding.etChecklistTitle.setHintTextColor(hintColor);
+            binding.etNewItem.setTextColor(textColor);
+            binding.etNewItem.setHintTextColor(hintColor);
+        } else {
+            binding.getRoot().setBackground(null);
+            int textColor = isDarkTheme ? Color.WHITE : getThemeColor(android.R.attr.textColorPrimary);
+            int subColor = isDarkTheme ? 0xFFE0E0E0 : getThemeColor(android.R.attr.textColorSecondary);
+            
+            binding.etChecklistTitle.setTextColor(textColor);
+            binding.etNewItem.setTextColor(textColor);
+            binding.etNewItem.setHintTextColor(isDarkTheme ? 0x80FFFFFF : getThemeColor(android.R.attr.textColorHint));
+        }
 
         android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
         shape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
         shape.setColor(color);
         shape.setStroke(4, Color.WHITE);
         binding.viewSelectedColor.setBackground(shape);
+
+        // Notifica o adapter para atualizar as cores dos itens se necessário
+        if (adapter != null) adapter.notifyDataSetChanged();
     }
 
     @Override
@@ -536,14 +680,65 @@ public class ChecklistActivity extends AppCompatActivity {
     class CheckAdapter extends RecyclerView.Adapter<CheckAdapter.VH> {
         @NonNull @Override public VH onCreateViewHolder(@NonNull ViewGroup p, int t) { return new VH(ItemChecklistBinding.inflate(LayoutInflater.from(p.getContext()), p, false)); }
 
+        @SuppressLint("ClickableViewAccessibility")
         @Override public void onBindViewHolder(@NonNull VH h, int p) {
             CheckItem i = items.get(p);
+            int noteColor = Color.parseColor(EditActivity.noteColors[selectedColor % EditActivity.noteColors.length]);
 
             h.binding.cbItem.setOnCheckedChangeListener(null);
             if (h.watcher != null) h.binding.etItemName.removeTextChangedListener(h.watcher);
 
             h.binding.cbItem.setChecked(i.checked);
             applyTextWithEffect(h, i.name, i.checked);
+
+            // Aplica a cor da nota com transparência ao fundo (box) e ao contorno
+            int alphaColor = androidx.core.graphics.ColorUtils.setAlphaComponent(noteColor, 38); // ~15% alpha
+            h.binding.getRoot().setCardBackgroundColor(alphaColor);
+            h.binding.getRoot().setStrokeColor(android.content.res.ColorStateList.valueOf(noteColor));
+
+            // Ajuste de cores para o modo Pastel dinâmico
+            int currentTheme = settings.getTheme();
+            boolean isDarkTheme = (currentTheme == 1 || currentTheme == 2);
+
+            if (settings.getCardStyle() == 1) {
+                int textColor = isDarkTheme ? Color.WHITE : Color.BLACK;
+                h.binding.etItemName.setTextColor(textColor);
+                h.binding.etItemName.setHintTextColor(isDarkTheme ? 0x80FFFFFF : 0x80000000);
+            } else {
+                int textColor = isDarkTheme ? Color.WHITE : getThemeColor(android.R.attr.textColorPrimary);
+                h.binding.etItemName.setTextColor(textColor);
+                h.binding.etItemName.setHintTextColor(isDarkTheme ? 0xFFE0E0E0 : getThemeColor(android.R.attr.textColorSecondary));
+            }
+
+            // Sincroniza o checkbox: Marcado = Cor da Nota, Desmarcado = Cor da Fonte
+            int currentTextColor = h.binding.etItemName.getCurrentTextColor();
+            int[][] states = new int[][] {
+                new int[] { android.R.attr.state_checked },
+                new int[] { -android.R.attr.state_checked }
+            };
+            int[] colors = new int[] { noteColor, currentTextColor };
+            h.binding.cbItem.setButtonTintList(new android.content.res.ColorStateList(states, colors));
+
+            // Controle de edição baseado no modo Preview
+            h.binding.etItemName.setFocusable(!isPreviewMode);
+            h.binding.etItemName.setFocusableInTouchMode(!isPreviewMode);
+            h.binding.btnRemoveItem.setVisibility(isPreviewMode ? View.GONE : View.VISIBLE);
+            
+            // Permite detectar clique duplo para editar mesmo sobre o item
+            h.itemView.setOnTouchListener((v, event) -> {
+                gestureDetector.onTouchEvent(event);
+                if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
+                    v.performClick();
+                }
+                return false;
+            });
+            h.binding.etItemName.setOnTouchListener((v, event) -> {
+                gestureDetector.onTouchEvent(event);
+                if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
+                    v.performClick();
+                }
+                return isPreviewMode; // Consome o toque no preview para não abrir teclado, mas permite clique duplo
+            });
 
             h.watcher = new android.text.TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -567,6 +762,7 @@ public class ChecklistActivity extends AppCompatActivity {
                 if (pos != RecyclerView.NO_POSITION) {
                     items.remove(pos);
                     notifyItemRemoved(pos);
+                    updateEmptyView();
                 }
             });
         }

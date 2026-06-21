@@ -120,96 +120,125 @@ public class NoteWidgetProvider extends AppWidgetProvider {
         
         RemoteViews views = new RemoteViews(context.getPackageName(), layoutId);
 
-        // Cor de Fundo e Transparência (Comum a todos)
-        int alpha = (int) (settings.getTransparency() * 2.55); // 0-100 to 0-255
+        int alpha = (int) (settings.getTransparency() * 2.55);
         int cardStyle = settings.getCardStyle();
+        int currentTheme = settings.getTheme();
+        boolean isDarkTheme = (currentTheme == 1 || currentTheme == 2);
+
+        views.setViewVisibility(R.id.widget_color_bar, View.GONE);
 
         if (isAllNotesList) {
-            // Widget 1x2: Lista de Todas as Notas
-            views.setInt(R.id.widget_root, "setBackgroundColor", Color.argb(alpha, 18, 18, 18));
-            views.setInt(R.id.widget_color_bar, "setBackgroundColor", Color.parseColor("#4DB6AC")); // Cor Notara_
-            
+            int noteColor = Color.parseColor(EditActivity.noteColors[0]);
+
+            if (cardStyle == 1) {
+                float[] hsl = new float[3];
+                androidx.core.graphics.ColorUtils.colorToHSL(noteColor, hsl);
+                hsl[1] *= 0.4f;
+                hsl[2] = isDarkTheme ? 0.15f : 0.9f;
+                int pastelColor = androidx.core.graphics.ColorUtils.HSLToColor(hsl);
+                int finalColor = Color.argb(alpha, Color.red(pastelColor), Color.green(pastelColor), Color.blue(pastelColor));
+                views.setInt(R.id.widget_root, "setBackgroundColor", finalColor);
+            } else if (cardStyle == 2) {
+                int finalColor = Color.argb(alpha, Color.red(noteColor), Color.green(noteColor), Color.blue(noteColor));
+                views.setInt(R.id.widget_root, "setBackgroundColor", finalColor);
+            } else {
+                int rootColor = Color.argb(alpha, Color.red(noteColor), Color.green(noteColor), Color.blue(noteColor));
+                views.setInt(R.id.widget_root, "setBackgroundColor", rootColor);
+                int baseColor = isDarkTheme ? Color.parseColor("#4b4d4b") : Color.parseColor("#b4b2b4");
+                int blendR = (int)(Color.red(baseColor) * 0.8f + Color.red(noteColor) * 0.2f);
+                int blendG = (int)(Color.green(baseColor) * 0.8f + Color.green(noteColor) * 0.2f);
+                int blendB = (int)(Color.blue(baseColor) * 0.8f + Color.blue(noteColor) * 0.2f);
+                int blendedColor = Color.rgb(blendR, blendG, blendB);
+                int bgWithAlpha = Color.argb(alpha, Color.red(blendedColor), Color.green(blendedColor), Color.blue(blendedColor));
+                views.setInt(R.id.widget_content_container, "setBackgroundColor", bgWithAlpha);
+                views.setViewVisibility(R.id.widget_color_bar, View.GONE);
+            }
+
             Intent serviceIntent = new Intent(context, AllNotesWidgetService.class);
             serviceIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
             serviceIntent.setData(Uri.parse(serviceIntent.toUri(Intent.URI_INTENT_SCHEME)));
             views.setRemoteAdapter(R.id.widget_all_notes_list, serviceIntent);
-            
-            // Template para abrir notas da lista
+
             Intent clickIntent = new Intent(context, NoteWidgetProvider.class);
             clickIntent.setAction(ACTION_WIDGET_CLICK);
             PendingIntent pendingIntent = PendingIntent.getBroadcast(context, appWidgetId + 2000, clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
             views.setPendingIntentTemplate(R.id.widget_all_notes_list, pendingIntent);
-            
+
             appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_all_notes_list);
 
         } else if (note != null) {
-            // Widgets 1x1 e 2x2 (Fixos em uma nota)
             views.setTextViewText(R.id.widget_title, note.isLocked == 1 ? "* Nota Protegida" : note.title);
-            
+
             int noteColor = Color.parseColor(EditActivity.noteColors[note.color]);
-            
-            if (cardStyle == 1) { // Pastel
-                views.setViewVisibility(R.id.widget_color_bar, View.GONE);
+
+            if (cardStyle == 1) {
                 float[] hsl = new float[3];
                 androidx.core.graphics.ColorUtils.colorToHSL(noteColor, hsl);
                 hsl[1] *= 0.4f;
-                hsl[2] = 0.9f;
+                hsl[2] = isDarkTheme ? 0.15f : 0.9f;
                 int pastelColor = androidx.core.graphics.ColorUtils.HSLToColor(hsl);
                 int finalColor = Color.argb(alpha, Color.red(pastelColor), Color.green(pastelColor), Color.blue(pastelColor));
                 views.setInt(R.id.widget_root, "setBackgroundColor", finalColor);
-                views.setTextColor(R.id.widget_title, 0xFF333333);
-                views.setTextColor(R.id.widget_content, 0xFF555555);
-            } else if (cardStyle == 2) { // Solid
-                views.setViewVisibility(R.id.widget_color_bar, View.GONE);
+                views.setTextColor(R.id.widget_title, isDarkTheme ? Color.WHITE : 0xFF333333);
+            } else if (cardStyle == 2) {
                 int finalColor = Color.argb(alpha, Color.red(noteColor), Color.green(noteColor), Color.blue(noteColor));
                 views.setInt(R.id.widget_root, "setBackgroundColor", finalColor);
-                views.setTextColor(R.id.widget_title, Color.BLACK); // Letras pretas para Solid
-                views.setTextColor(R.id.widget_content, 0xFF222222);
-            } else { // Label (Padrão)
-                views.setViewVisibility(R.id.widget_color_bar, View.VISIBLE);
-                // No widget, o fundo padrão é escuro
-                int finalColor = Color.argb(alpha, 18, 18, 18);
-                views.setInt(R.id.widget_root, "setBackgroundColor", finalColor);
-                views.setInt(R.id.widget_color_bar, "setBackgroundColor", noteColor);
-                views.setTextColor(R.id.widget_title, Color.WHITE);
-                views.setTextColor(R.id.widget_content, 0xFFBBBBBB);
-            }
-
-            if (note.isLocked == 1) {
-                views.setTextViewText(R.id.widget_content, "Autentique-se no app para ver");
-                views.setViewVisibility(R.id.widget_list, View.GONE);
-                views.setViewVisibility(R.id.widget_content, View.VISIBLE);
-            } else if (note.type == 1) {
-                // Lista/Checklist
-                views.setViewVisibility(R.id.widget_content, View.GONE);
-                views.setViewVisibility(R.id.widget_list, View.VISIBLE);
-                
-                Intent serviceIntent = new Intent(context, NoteWidgetService.class);
-                serviceIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-                serviceIntent.putExtra("NOTE_ID", note.id);
-                serviceIntent.setData(Uri.parse(serviceIntent.toUri(Intent.URI_INTENT_SCHEME)));
-                views.setRemoteAdapter(R.id.widget_list, serviceIntent);
-                appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list);
+                views.setTextColor(R.id.widget_title, isDarkTheme ? Color.WHITE : Color.BLACK);
             } else {
-                // Nota de texto
-                views.setViewVisibility(R.id.widget_list, View.GONE);
-                views.setViewVisibility(R.id.widget_content, View.VISIBLE);
-                views.setTextViewText(R.id.widget_content, note.content);
+                int rootColor = Color.argb(alpha, Color.red(noteColor), Color.green(noteColor), Color.blue(noteColor));
+                views.setInt(R.id.widget_root, "setBackgroundColor", rootColor);
+                int baseColor = isDarkTheme ? Color.parseColor("#4b4d4b") : Color.parseColor("#b4b2b4");
+                int blendR = (int)(Color.red(baseColor) * 0.8f + Color.red(noteColor) * 0.2f);
+                int blendG = (int)(Color.green(baseColor) * 0.8f + Color.green(noteColor) * 0.2f);
+                int blendB = (int)(Color.blue(baseColor) * 0.8f + Color.blue(noteColor) * 0.2f);
+                int blendedColor = Color.rgb(blendR, blendG, blendB);
+                int bgWithAlpha = Color.argb(alpha, Color.red(blendedColor), Color.green(blendedColor), Color.blue(blendedColor));
+                views.setInt(R.id.widget_content_container, "setBackgroundColor", bgWithAlpha);
+                views.setViewVisibility(R.id.widget_color_bar, View.GONE);
+                views.setTextColor(R.id.widget_title, isDarkTheme ? Color.WHITE : Color.BLACK);
             }
 
-            // Click Intent para o widget todo
+            if (layoutId != R.layout.widget_memo_small) {
+                if (cardStyle == 1) {
+                    views.setTextColor(R.id.widget_content, isDarkTheme ? 0xFFE0E0E0 : 0xFF555555);
+                } else if (cardStyle == 2) {
+                    views.setTextColor(R.id.widget_content, isDarkTheme ? 0xFFE0E0E0 : 0xFF222222);
+                } else {
+                    views.setTextColor(R.id.widget_content, isDarkTheme ? 0xFFE0E0E0 : Color.DKGRAY);
+                }
+
+                if (note.isLocked == 1) {
+                    views.setTextViewText(R.id.widget_content, "Autentique-se no app para ver");
+                    views.setViewVisibility(R.id.widget_list, View.GONE);
+                    views.setViewVisibility(R.id.widget_content, View.VISIBLE);
+                } else if (note.type == 1) {
+                    views.setViewVisibility(R.id.widget_content, View.GONE);
+                    views.setViewVisibility(R.id.widget_list, View.VISIBLE);
+
+                    Intent serviceIntent = new Intent(context, NoteWidgetService.class);
+                    serviceIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+                    serviceIntent.putExtra("NOTE_ID", note.id);
+                    serviceIntent.setData(Uri.parse(serviceIntent.toUri(Intent.URI_INTENT_SCHEME)));
+                    views.setRemoteAdapter(R.id.widget_list, serviceIntent);
+                    appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list);
+                } else {
+                    views.setViewVisibility(R.id.widget_list, View.GONE);
+                    views.setViewVisibility(R.id.widget_content, View.VISIBLE);
+                    views.setTextViewText(R.id.widget_content, note.content);
+                }
+
+                Intent listClickIntent = new Intent(context, NoteWidgetProvider.class);
+                listClickIntent.setAction(ACTION_WIDGET_CLICK);
+                listClickIntent.putExtra("NOTE_ID", note.id);
+                PendingIntent listPendingIntent = PendingIntent.getBroadcast(context, appWidgetId + 1000, listClickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+                views.setPendingIntentTemplate(R.id.widget_list, listPendingIntent);
+            }
+
             Intent clickIntent = new Intent(context, NoteWidgetProvider.class);
             clickIntent.setAction(ACTION_WIDGET_CLICK);
             clickIntent.putExtra("NOTE_ID", note.id);
             PendingIntent pendingIntent = PendingIntent.getBroadcast(context, appWidgetId, clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             views.setOnClickPendingIntent(R.id.widget_root, pendingIntent);
-            
-            // Template para cliques na lista (para os checkboxes)
-            Intent listClickIntent = new Intent(context, NoteWidgetProvider.class);
-            listClickIntent.setAction(ACTION_WIDGET_CLICK);
-            listClickIntent.putExtra("NOTE_ID", note.id);
-            PendingIntent listPendingIntent = PendingIntent.getBroadcast(context, appWidgetId + 1000, listClickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
-            views.setPendingIntentTemplate(R.id.widget_list, listPendingIntent);
 
         } else {
             views.setTextViewText(R.id.widget_title, "Notara_");

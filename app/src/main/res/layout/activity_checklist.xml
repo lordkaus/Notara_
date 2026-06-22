@@ -169,16 +169,4 @@
         </LinearLayout>
     </com.google.android.material.bottomappbar.BottomAppBar>
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/btnSaveChecklist"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:contentDescription="@null"
-        app:layout_anchor="@id/bottomAppBar"
-        app:srcCompat="@drawable/ic_save"
-        app:tint="?attr/colorOnPrimary"
-        app:backgroundTint="?attr/colorPrimary"
-        app:elevation="6dp"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.MediumComponent" />
-
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

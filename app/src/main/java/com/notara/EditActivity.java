@@ -206,7 +206,6 @@ public class EditActivity extends AppCompatActivity {
         binding.tvDate.setVisibility(View.GONE);
         binding.editNoteText.setVisibility(View.GONE);
         binding.bottomAppBar.setVisibility(View.GONE);
-        binding.btnSave.setVisibility(View.GONE);
     }
 
     private void unlockContent() {
@@ -237,7 +236,6 @@ public class EditActivity extends AppCompatActivity {
         boolean shouldShowControls = !isPreviewMode && isUnlocked;
         
         binding.bottomAppBar.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
-        binding.btnSave.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
         
         // Ensure text views are visible if unlocked
         if (isUnlocked) {
@@ -354,53 +352,9 @@ public class EditActivity extends AppCompatActivity {
     }
 
     private void setupListeners() {
-        binding.btnSave.setOnClickListener(v -> { saveNote(); finish(); });
-        binding.btnColorPicker.setOnClickListener(v -> showColorPicker());
         binding.btnConvertToChecklist.setOnClickListener(v -> convertToChecklist());
         binding.btnReminder.setOnClickListener(v -> showReminderDialog(0));
         binding.btnAlarm.setOnClickListener(v -> showReminderDialog(1));
-    }
-
-    private void showColorPicker() {
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_color_picker, null);
-        androidx.recyclerview.widget.RecyclerView rv = dialogView.findViewById(R.id.colorRecyclerView);
-        rv.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 4));
-
-        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
-            .setTitle("Escolher Cor")
-            .setView(dialogView)
-            .create();
-
-        rv.setAdapter(new androidx.recyclerview.widget.RecyclerView.Adapter<androidx.recyclerview.widget.RecyclerView.ViewHolder>() {
-            @NonNull @Override public androidx.recyclerview.widget.RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup p, int t) {
-                return new androidx.recyclerview.widget.RecyclerView.ViewHolder(getLayoutInflater().inflate(R.layout.item_color_picker, p, false)) {};
-            }
-            @Override public void onBindViewHolder(@NonNull androidx.recyclerview.widget.RecyclerView.ViewHolder h, int p) {
-                View colorView = h.itemView.findViewById(R.id.colorView);
-                int color = Color.parseColor(noteColors[p]);
-
-                android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
-                shape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-                shape.setColor(color);
-
-                if (selectedColor == p) {
-                    shape.setStroke(6, Color.WHITE);
-                }
-
-                colorView.setBackground(shape);
-                colorView.setOnClickListener(v -> {
-                    int pos = h.getBindingAdapterPosition();
-                    if (pos != androidx.recyclerview.widget.RecyclerView.NO_POSITION) {
-                        selectedColor = pos;
-                        updateColorIndicator();
-                        dialog.dismiss();
-                    }
-                });
-            }
-            @Override public int getItemCount() { return noteColors.length; }
-        });
-
-        dialog.show();
     }
 
     private int getThemeColor(int attr) {
@@ -412,7 +366,6 @@ public class EditActivity extends AppCompatActivity {
     private void updateColorIndicator() {
         int color = Color.parseColor(noteColors[selectedColor % noteColors.length]);
         binding.topColorIndicator.setVisibility(View.GONE);
-        binding.btnSave.setBackgroundColor(color);
 
         int currentTheme = settings.getTheme();
         boolean isDarkTheme = (currentTheme == 1);
@@ -431,12 +384,6 @@ public class EditActivity extends AppCompatActivity {
         binding.etTitle.setTextColor(textColor);
         binding.editNoteText.setTextColor(subColor);
         binding.editNoteText.setLineColor(color);
-
-        android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
-        shape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-        shape.setColor(color);
-        shape.setStroke(4, Color.WHITE);
-        binding.viewSelectedColor.setBackground(shape);
     }
 
     private void showReminderDialog(int type) {

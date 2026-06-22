@@ -237,7 +237,6 @@ public class ChecklistActivity extends AppCompatActivity {
         binding.btnChecklistReminder.setVisibility(View.GONE);
         binding.btnChecklistAlarm.setVisibility(View.GONE);
         binding.btnConvertToText.setVisibility(View.GONE);
-        binding.btnSaveChecklist.setVisibility(View.GONE);
     }
 
     private void unlockContent() {
@@ -262,7 +261,6 @@ public class ChecklistActivity extends AppCompatActivity {
         boolean shouldShowControls = !isPreviewMode && isUnlocked;
         
         binding.bottomAppBar.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
-        binding.btnSaveChecklist.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
         binding.tilNewItem.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
         
         if (isUnlocked) {
@@ -443,7 +441,6 @@ public class ChecklistActivity extends AppCompatActivity {
             if (actionId == EditorInfo.IME_ACTION_DONE || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) { addNewItem(); return true; }
             return false;
         });
-        binding.btnSaveChecklist.setOnClickListener(v -> { save(); finish(); });
         binding.btnChecklistColorPicker.setOnClickListener(v -> showColorPicker());
         binding.btnChecklistAlarm.setOnClickListener(v -> showReminderDialog(1));
         binding.btnChecklistReminder.setOnClickListener(v -> showReminderDialog(0));
@@ -695,7 +692,6 @@ public class ChecklistActivity extends AppCompatActivity {
     private void updateColorIndicator() {
         int color = Color.parseColor(EditActivity.noteColors[selectedColor % EditActivity.noteColors.length]);
         binding.topColorIndicator.setVisibility(View.GONE);
-        binding.btnSaveChecklist.setBackgroundColor(color);
 
         int currentTheme = settings.getTheme();
         boolean isDarkTheme = (currentTheme == 1);

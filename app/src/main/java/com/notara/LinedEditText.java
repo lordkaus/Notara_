@@ -10,7 +10,6 @@ import androidx.appcompat.widget.AppCompatEditText;
 public class LinedEditText extends AppCompatEditText {
     private Rect mRect;
     private Paint mPaint;
-    private Paint mMarginPaint;
     private float density;
 
     public LinedEditText(Context context, AttributeSet attrs) {
@@ -18,19 +17,11 @@ public class LinedEditText extends AppCompatEditText {
         mRect = new Rect();
         density = context.getResources().getDisplayMetrics().density;
 
-        // Linhas Horizontais
         mPaint = new Paint();
         mPaint.setStyle(Paint.Style.STROKE);
-        mPaint.setStrokeWidth(Math.max(1f, 1.0f * density)); 
+        mPaint.setStrokeWidth(Math.max(1f, 1.0f * density));
         mPaint.setAntiAlias(true);
-        mPaint.setColor(0x66CCCCCC); // cinza mais visível (40% opaco)
-
-        // Linha de Margem Vertical (invisível)
-        mMarginPaint = new Paint();
-        mMarginPaint.setStyle(Paint.Style.STROKE);
-        mMarginPaint.setStrokeWidth(Math.max(1f, 0.8f * density));
-        mMarginPaint.setAntiAlias(true);
-        mMarginPaint.setColor(0x00FF5252); // completamente transparente 
+        mPaint.setColor(0x66CCCCCC);
     }
 
     public void setLineColor(int color) {
@@ -43,15 +34,13 @@ public class LinedEditText extends AppCompatEditText {
         int height = getHeight();
         int lineHeight = getLineHeight();
         int numberOfLines = height / lineHeight;
-        
+
         if (getLineCount() > numberOfLines) {
             numberOfLines = getLineCount();
         }
 
         Rect r = mRect;
         Paint paint = mPaint;
-        
-        // Margem Vertical removida
 
         int baseline = getLineBounds(0, r);
         float offset = (getLineHeight() - getTextSize()) / 2 + 2 * density;

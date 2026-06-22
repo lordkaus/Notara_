@@ -50,6 +50,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -66,6 +68,9 @@ import java.util.Locale;
 public class ChecklistActivity extends AppCompatActivity {
     private ActivityChecklistBinding binding;
     private NoteViewModel viewModel;
+    private int lastImeInset = 0;
+    private int lastAppliedIme = -1;
+    private int lastAppliedBar = -1;
     private List<CheckItem> items = new ArrayList<>();
     private CheckAdapter adapter;
     private int noteId = -1;
@@ -91,16 +96,18 @@ public class ChecklistActivity extends AppCompatActivity {
         int theme = settings.getTheme();
         WindowInsetsControllerCompat windowInsetsController = new WindowInsetsControllerCompat(getWindow(), getWindow().getDecorView());
 
-        if (theme == 0 || theme == 3) {
+        if (theme == 0) {
             setTheme(R.style.Theme_Notara);
             windowInsetsController.setAppearanceLightStatusBars(true);
         } else {
-            setTheme(theme == 1 ? R.style.Theme_Notara_Pantera : R.style.Theme_Notara);
+            setTheme(R.style.Theme_Notara);
             windowInsetsController.setAppearanceLightStatusBars(false);
         }
 
         binding = ActivityChecklistBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+
+        setupBottomBarOffsetListener();
 
         isPreviewMode = getIntent().getBooleanExtra("PREVIEW_MODE", false);
 
@@ -149,12 +156,78 @@ public class ChecklistActivity extends AppCompatActivity {
         setupDate();
         setupRecyclerView();
         setupListeners();
+
+        binding.contentContainer.post(() -> refreshMargin());
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (!isPreviewMode && isUnlocked) {
+            enablePreviewMode();
+        } else {
+            super.onBackPressed();
+        }
     }
 
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
         gestureDetector.onTouchEvent(ev);
         return super.dispatchTouchEvent(ev);
+    }
+
+    private void setupBottomBarOffsetListener() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.contentContainer, (v, insets) -> {
+            lastImeInset = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
+            refreshMargin();
+            return insets;
+        });
+
+        binding.getRoot().getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            android.graphics.Rect r = new android.graphics.Rect();
+            binding.getRoot().getWindowVisibleDisplayFrame(r);
+            int screenHeight = binding.getRoot().getRootView().getHeight();
+            int keyboardHeight = screenHeight - r.bottom;
+            int prev = lastImeInset;
+            lastImeInset = Math.max(0, keyboardHeight);
+            if (lastImeInset != prev) {
+                refreshMargin();
+            }
+        });
+
+        binding.bottomAppBar.addOnScrollStateChangedListener((view, state) -> {
+            refreshMargin();
+        });
+
+        binding.bottomAppBar.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+            binding.bottomAppBar.post(() -> refreshMargin());
+        });
+    }
+
+    private void refreshMargin() {
+        int barMargin = computeBarMargin();
+        int total = Math.max(lastImeInset, barMargin);
+        ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) binding.contentContainer.getLayoutParams();
+
+        boolean imeChanged = lastImeInset != lastAppliedIme;
+        boolean barChanged = barMargin != lastAppliedBar;
+        boolean marginChanged = params.bottomMargin != total;
+
+        if (!imeChanged && !barChanged && !marginChanged) {
+            return;
+        }
+
+        lastAppliedIme = lastImeInset;
+        lastAppliedBar = barMargin;
+
+        if (params.bottomMargin != total) {
+            params.bottomMargin = total;
+            binding.contentContainer.setLayoutParams(params);
+        }
+    }
+
+    private int computeBarMargin() {
+        if (binding.bottomAppBar.getVisibility() != View.VISIBLE) return 0;
+        return binding.bottomAppBar.getHeight();
     }
 
     private void lockContent() {
@@ -209,6 +282,9 @@ public class ChecklistActivity extends AppCompatActivity {
         if (adapter != null) {
             adapter.notifyItemRangeChanged(0, items.size());
         }
+
+        refreshMargin();
+        binding.bottomAppBar.post(() -> refreshMargin());
     }
 
     private void updateEmptyView() {
@@ -622,14 +698,9 @@ public class ChecklistActivity extends AppCompatActivity {
         binding.btnSaveChecklist.setBackgroundColor(color);
 
         int currentTheme = settings.getTheme();
-        boolean isDarkTheme = (currentTheme == 1 || currentTheme == 2); // 1: Panther, 2: Dynamic Black
+        boolean isDarkTheme = (currentTheme == 1);
 
         android.graphics.drawable.GradientDrawable border = new android.graphics.drawable.GradientDrawable();
-        float[] hsl = new float[3];
-        androidx.core.graphics.ColorUtils.colorToHSL(color, hsl);
-        hsl[1] *= 0.4f;
-        hsl[2] = isDarkTheme ? 0.15f : 0.9f;
-        int pastelColor = androidx.core.graphics.ColorUtils.HSLToColor(hsl);
         int tintAlpha = (int) (255 * 0.3f);
         int tintColor = Color.argb(tintAlpha, Color.red(color), Color.green(color), Color.blue(color));
         border.setColor(tintColor);
@@ -637,24 +708,11 @@ public class ChecklistActivity extends AppCompatActivity {
         border.setCornerRadius(12 * getResources().getDisplayMetrics().density);
         binding.contentContainer.setBackground(border);
 
-        if (settings.getCardStyle() == 1) { // Pastel
-            binding.getRoot().setBackgroundColor(pastelColor);
-
-            int textColor = isDarkTheme ? Color.WHITE : Color.BLACK;
-            int hintColor = isDarkTheme ? 0x80FFFFFF : 0x80000000;
-            binding.etChecklistTitle.setTextColor(textColor);
-            binding.etChecklistTitle.setHintTextColor(hintColor);
-            binding.etNewItem.setTextColor(textColor);
-            binding.etNewItem.setHintTextColor(hintColor);
-        } else {
-            binding.getRoot().setBackground(null);
-            int textColor = isDarkTheme ? Color.WHITE : getThemeColor(android.R.attr.textColorPrimary);
-            int subColor = isDarkTheme ? 0xFFE0E0E0 : getThemeColor(android.R.attr.textColorSecondary);
-            
-            binding.etChecklistTitle.setTextColor(textColor);
-            binding.etNewItem.setTextColor(textColor);
-            binding.etNewItem.setHintTextColor(isDarkTheme ? 0x80FFFFFF : getThemeColor(android.R.attr.textColorHint));
-        }
+        binding.getRoot().setBackground(null);
+        int textColor = isDarkTheme ? Color.WHITE : getThemeColor(android.R.attr.textColorPrimary);
+        binding.etChecklistTitle.setTextColor(textColor);
+        binding.etNewItem.setTextColor(textColor);
+        binding.etNewItem.setHintTextColor(isDarkTheme ? 0x80FFFFFF : getThemeColor(android.R.attr.textColorHint));
 
         android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
         shape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
@@ -696,19 +754,11 @@ public class ChecklistActivity extends AppCompatActivity {
             h.binding.getRoot().setCardBackgroundColor(alphaColor);
             h.binding.getRoot().setStrokeColor(android.content.res.ColorStateList.valueOf(noteColor));
 
-            // Ajuste de cores para o modo Pastel dinâmico
             int currentTheme = settings.getTheme();
-            boolean isDarkTheme = (currentTheme == 1 || currentTheme == 2);
-
-            if (settings.getCardStyle() == 1) {
-                int textColor = isDarkTheme ? Color.WHITE : Color.BLACK;
-                h.binding.etItemName.setTextColor(textColor);
-                h.binding.etItemName.setHintTextColor(isDarkTheme ? 0x80FFFFFF : 0x80000000);
-            } else {
-                int textColor = isDarkTheme ? Color.WHITE : getThemeColor(android.R.attr.textColorPrimary);
-                h.binding.etItemName.setTextColor(textColor);
-                h.binding.etItemName.setHintTextColor(isDarkTheme ? 0xFFE0E0E0 : getThemeColor(android.R.attr.textColorSecondary));
-            }
+            boolean isDarkTheme = (currentTheme == 1);
+            int textColor = isDarkTheme ? Color.WHITE : getThemeColor(android.R.attr.textColorPrimary);
+            h.binding.etItemName.setTextColor(textColor);
+            h.binding.etItemName.setHintTextColor(isDarkTheme ? 0xFFE0E0E0 : getThemeColor(android.R.attr.textColorSecondary));
 
             // Sincroniza o checkbox: Marcado = Cor da Nota, Desmarcado = Cor da Fonte
             int currentTextColor = h.binding.etItemName.getCurrentTextColor();

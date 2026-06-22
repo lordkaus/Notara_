@@ -8,7 +8,7 @@
     android:background="?android:attr/colorBackground"
     tools:ignore="Overdraw,UseCompoundDrawables">
 
-    <View 
+    <View
         android:id="@+id/bgView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />

@@ -30,11 +30,11 @@ public class SettingsActivity extends AppCompatActivity {
         int theme = settings.getTheme();
         WindowInsetsControllerCompat windowInsetsController = new WindowInsetsControllerCompat(getWindow(), getWindow().getDecorView());
 
-        if (theme == 0 || theme == 3) {
+        if (theme == 0) {
             setTheme(R.style.Theme_Notara);
             windowInsetsController.setAppearanceLightStatusBars(true);
         } else {
-            setTheme(theme == 1 ? R.style.Theme_Notara_Pantera : R.style.Theme_Notara);
+            setTheme(R.style.Theme_Notara);
             windowInsetsController.setAppearanceLightStatusBars(false);
         }
         super.onCreate(savedInstanceState);
@@ -44,9 +44,7 @@ public class SettingsActivity extends AppCompatActivity {
         setupGridSettings();
         setupToquesSettings();
         setupThemeSettings();
-        setupCardStyleSettings();
-        setupBgThemeSettings();
-        applyBgTheme();
+
         setupSecuritySettings();
         setupPlanningSettings();
         setupDataManagement();
@@ -148,18 +146,11 @@ public class SettingsActivity extends AppCompatActivity {
         RadioGroup rg = findViewById(R.id.rgThemes);
         int currentTheme = settings.getTheme();
 
-        if (currentTheme == 0) ((RadioButton) findViewById(R.id.rbLight)).setChecked(true);
-        else if (currentTheme == 1) ((RadioButton) findViewById(R.id.rbPantera)).setChecked(true);
-        else if (currentTheme == 2) ((RadioButton) findViewById(R.id.rbDynamicBlack)).setChecked(true);
-        else if (currentTheme == 3) ((RadioButton) findViewById(R.id.rbDynamicLight)).setChecked(true);
+        if (currentTheme == 1) ((RadioButton) findViewById(R.id.rbPreto)).setChecked(true);
+        else ((RadioButton) findViewById(R.id.rbBranco)).setChecked(true);
 
         rg.setOnCheckedChangeListener((group, checkedId) -> {
-            int newTheme = 0;
-            if (checkedId == R.id.rbLight) newTheme = 0;
-            else if (checkedId == R.id.rbPantera) newTheme = 1;
-            else if (checkedId == R.id.rbDynamicBlack) newTheme = 2;
-            else if (checkedId == R.id.rbDynamicLight) newTheme = 3;
-
+            int newTheme = checkedId == R.id.rbBranco ? 0 : 1;
             settings.setTheme(newTheme);
             showRestartDialog();
         });
@@ -175,55 +166,10 @@ public class SettingsActivity extends AppCompatActivity {
             settings.setTransparency(val);
             tvTransValue.setText(getString(R.string.transparency_value, val));
             com.notara.widget.NoteWidgetProvider.updateAllWidgets(this);
-            applyBgTheme();
         });
     }
 
-    private void setupCardStyleSettings() {
-        RadioGroup rg = findViewById(R.id.rgCardStyles);
-        int currentStyle = settings.getCardStyle();
-        if (currentStyle == 0) ((RadioButton) findViewById(R.id.rbStyleLabel)).setChecked(true);
-        else if (currentStyle == 1) ((RadioButton) findViewById(R.id.rbStylePastel)).setChecked(true);
-        else if (currentStyle == 2) ((RadioButton) findViewById(R.id.rbStyleSolid)).setChecked(true);
 
-        rg.setOnCheckedChangeListener((group, checkedId) -> {
-            if (checkedId == R.id.rbStyleLabel) settings.setCardStyle(0);
-            else if (checkedId == R.id.rbStylePastel) settings.setCardStyle(1);
-            else if (checkedId == R.id.rbStyleSolid) settings.setCardStyle(2);
-
-            com.notara.widget.NoteWidgetProvider.updateAllWidgets(this);
-            showRestartDialog();
-        });
-    }
-
-    private void setupBgThemeSettings() {
-        RadioGroup rg = findViewById(R.id.rgBgThemes);
-        int currentBg = settings.getBgTheme();
-        if (currentBg == 0) ((RadioButton) findViewById(R.id.rbBgDefault)).setChecked(true);
-        else if (currentBg == 1) ((RadioButton) findViewById(R.id.rbBgMesh)).setChecked(true);
-        else if (currentBg == 2) ((RadioButton) findViewById(R.id.rbBgGeometric)).setChecked(true);
-
-        rg.setOnCheckedChangeListener((group, checkedId) -> {
-            if (checkedId == R.id.rbBgDefault) settings.setBgTheme(0);
-            else if (checkedId == R.id.rbBgMesh) settings.setBgTheme(1);
-            else if (checkedId == R.id.rbBgGeometric) settings.setBgTheme(2);
-            showRestartDialog();
-        });
-    }
-
-    private void applyBgTheme() {
-        android.view.View bgView = findViewById(R.id.bgView);
-        if (bgView == null) return;
-
-        int bgTheme = settings.getBgTheme();
-        if (bgTheme == 1) {
-            bgView.setBackgroundResource(R.drawable.bg_mesh);
-        } else if (bgTheme == 2) {
-            bgView.setBackgroundResource(R.drawable.bg_geometric);
-        } else {
-            bgView.setBackground(null);
-        }
-    }
 
     private void setupSecuritySettings() {
         SwitchMaterial swBio = findViewById(R.id.switchBiometric);

@@ -64,11 +64,11 @@ public class TrashActivity extends AppCompatActivity {
         int theme = settings.getTheme();
         WindowInsetsControllerCompat windowInsetsController = new WindowInsetsControllerCompat(getWindow(), getWindow().getDecorView());
 
-        if (theme == 0 || theme == 3) {
+        if (theme == 0) {
             setTheme(R.style.Theme_Notara);
             windowInsetsController.setAppearanceLightStatusBars(true);
         } else {
-            setTheme(theme == 1 ? R.style.Theme_Notara_Pantera : R.style.Theme_Notara);
+            setTheme(R.style.Theme_Notara);
             windowInsetsController.setAppearanceLightStatusBars(false);
         }
     }

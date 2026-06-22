@@ -36,22 +36,13 @@
     <string name="uniform_note_size">Tamanho de Notas Uniforme</string>
     <string name="use_24h_format">Usar Formato 24h</string>
     <string name="personalization">Personalização</string>
-    <string name="theme_light">Light Theme</string>
-    <string name="theme_pantera">Pantera OLED Black</string>
-    <string name="theme_material_you_black">Material You Black</string>
-    <string name="theme_material_you_light">Material You Light</string>
+    <string name="theme_preto">Preto</string>
+    <string name="theme_branco">Branco</string>
     <string name="widget_transparency">Transparência de Widgets</string>
     <string name="default_transparency">100%</string>
     <string name="colors_in_notifications">Cores em Notificações</string>
     <string name="colors_in_alarms">Cores em Alarmes</string>
-    <string name="note_style">Estilo das Notas</string>
-    <string name="style_label_default">Etiqueta (Padrão)</string>
-    <string name="style_pastel_soft">Pastel (Suave)</string>
-    <string name="style_solid_vibrant">Solid (Vibrante)</string>
-    <string name="app_background">Fundo do Aplicativo</string>
-    <string name="bg_default">Padrão</string>
-    <string name="bg_mesh">Malha (Mesh)</string>
-    <string name="bg_geometric">Geométrico</string>
+
     <string name="privacy_and_security">Privacidade e Segurança</string>
     <string name="device_biometrics">Biometria do Dispositivo</string>
     <string name="app_password">Senha do Aplicativo</string>
@@ -79,4 +70,7 @@
     <string name="day_full_sat">Sáb</string>
     <string name="day_placeholder">1</string>
     <string name="checklist_item_hint">Item da lista</string>
+    <string name="widget_label_1x1">Título</string>
+    <string name="widget_label_1x2">Lista</string>
+    <string name="widget_label_2x2">Nota Completa</string>
 </resources>

@@ -109,8 +109,7 @@
         android:layout_gravity="bottom"
         app:fabAlignmentMode="end"
         app:backgroundTint="?attr/colorSurfaceContainerHigh"
-        app:elevation="4dp"
-        app:hideOnScroll="true">
+        app:elevation="4dp">
 
         <LinearLayout
             android:layout_width="match_parent"

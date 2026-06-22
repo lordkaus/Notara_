@@ -33,19 +33,11 @@ public class CalendarActivity extends AppCompatActivity {
         int theme = settings.getTheme();
 
         // Define o tema antes do super.onCreate
-        if (theme == 1) {
-            setTheme(R.style.Theme_Notara_Pantera);
-        } else {
-            setTheme(R.style.Theme_Notara);
-        }
+        setTheme(R.style.Theme_Notara);
 
         // Gerencia a cor dos ícones da barra de status usando a API do AndroidX
         WindowInsetsControllerCompat controller = new WindowInsetsControllerCompat(getWindow(), getWindow().getDecorView());
-        if (theme == 0 || theme == 3) {
-            controller.setAppearanceLightStatusBars(true);
-        } else {
-            controller.setAppearanceLightStatusBars(false);
-        }
+        controller.setAppearanceLightStatusBars(theme == 0);
 
         super.onCreate(savedInstanceState);
         binding = ActivityCalendarBinding.inflate(getLayoutInflater());

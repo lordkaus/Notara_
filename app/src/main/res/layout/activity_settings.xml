@@ -8,11 +8,6 @@
     android:background="?android:attr/colorBackground"
     tools:ignore="Overdraw">
 
-    <View 
-        android:id="@+id/bgView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -160,10 +155,8 @@
                         android:layout_width="match_parent" 
                         android:layout_height="wrap_content" 
                         android:padding="8dp">
-                        <RadioButton android:id="@+id/rbLight" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/theme_light" android:padding="12dp" />
-                        <RadioButton android:id="@+id/rbPantera" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/theme_pantera" android:padding="12dp" />
-                        <RadioButton android:id="@+id/rbDynamicBlack" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/theme_material_you_black" android:padding="12dp" />
-                        <RadioButton android:id="@+id/rbDynamicLight" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/theme_material_you_light" android:padding="12dp" />
+                        <RadioButton android:id="@+id/rbPreto" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/theme_preto" android:padding="12dp" />
+                        <RadioButton android:id="@+id/rbBranco" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/theme_branco" android:padding="12dp" />
                     </RadioGroup>
 
                     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?attr/colorOutlineVariant" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" />
@@ -207,72 +200,6 @@
                     <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/switchNotifyColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="16dp" android:text="@string/colors_in_notifications" android:textSize="16sp" />
                     <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/switchAlarmColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="16dp" android:text="@string/colors_in_alarms" android:textSize="16sp" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- SEÇÃO: ESTILO DOS CARDS -->
-            <TextView 
-                android:layout_width="match_parent" 
-                android:layout_height="wrap_content"
-                android:text="@string/note_style" 
-                android:textColor="?attr/colorPrimary" 
-                android:textSize="13sp"
-                android:textStyle="bold" 
-                android:textAllCaps="true"
-                android:letterSpacing="0.1"
-                android:layout_marginBottom="12dp"
-                android:layout_marginStart="4dp" />
-
-            <com.google.android.material.card.MaterialCardView 
-                android:layout_width="match_parent" 
-                android:layout_height="wrap_content" 
-                app:cardCornerRadius="20dp"
-                app:cardElevation="0dp"
-                app:strokeWidth="1dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                android:layout_marginBottom="24dp">
-                
-                <RadioGroup 
-                    android:id="@+id/rgCardStyles" 
-                    android:layout_width="match_parent" 
-                    android:layout_height="wrap_content" 
-                    android:padding="8dp">
-                    <RadioButton android:id="@+id/rbStyleLabel" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/style_label_default" android:padding="12dp" />
-                    <RadioButton android:id="@+id/rbStylePastel" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/style_pastel_soft" android:padding="12dp" />
-                    <RadioButton android:id="@+id/rbStyleSolid" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/style_solid_vibrant" android:padding="12dp" />
-                </RadioGroup>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- SEÇÃO: FUNDO -->
-            <TextView 
-                android:layout_width="match_parent" 
-                android:layout_height="wrap_content"
-                android:text="@string/app_background" 
-                android:textColor="?attr/colorPrimary" 
-                android:textSize="13sp"
-                android:textStyle="bold" 
-                android:textAllCaps="true"
-                android:letterSpacing="0.1"
-                android:layout_marginBottom="12dp"
-                android:layout_marginStart="4dp" />
-
-            <com.google.android.material.card.MaterialCardView 
-                android:layout_width="match_parent" 
-                android:layout_height="wrap_content" 
-                app:cardCornerRadius="20dp"
-                app:cardElevation="0dp"
-                app:strokeWidth="1dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                android:layout_marginBottom="24dp">
-                
-                <RadioGroup 
-                    android:id="@+id/rgBgThemes" 
-                    android:layout_width="match_parent" 
-                    android:layout_height="wrap_content" 
-                    android:padding="8dp">
-                    <RadioButton android:id="@+id/rbBgDefault" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/bg_default" android:padding="12dp" />
-                    <RadioButton android:id="@+id/rbBgMesh" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/bg_mesh" android:padding="12dp" />
-                    <RadioButton android:id="@+id/rbBgGeometric" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/bg_geometric" android:padding="12dp" />
-                </RadioGroup>
             </com.google.android.material.card.MaterialCardView>
 
             <!-- SEÇÃO: SEGURANÇA -->

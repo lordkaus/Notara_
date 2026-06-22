@@ -103,56 +103,44 @@ public class NoteWidgetProvider extends AppWidgetProvider {
         NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
         DatabaseHelper.Note note = (noteId == -1) ? repository.getLatestNote() : repository.getNote(noteId);
 
-        // Detecta o layout baseado no tamanho do widget
-        Bundle options = appWidgetManager.getAppWidgetOptions(appWidgetId);
-        int minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT);
-        
+        boolean is2x2 = false;
+        for (int id : appWidgetManager.getAppWidgetIds(new ComponentName(context, NoteWidgetProvider2x2.class))) {
+            if (id == appWidgetId) { is2x2 = true; break; }
+        }
+
         int layoutId;
         boolean isAllNotesList = false;
-        if (minHeight < 100) {
-            layoutId = R.layout.widget_memo_small; // 1x1
-        } else if (minHeight < 200) {
-            layoutId = R.layout.widget_all_notes; // 1x2 Dinâmico (Lista de todas as notas)
-            isAllNotesList = true;
+        if (is2x2) {
+            layoutId = R.layout.widget_note_2x2;
         } else {
-            layoutId = R.layout.widget_note_2x2; // 2x2 Fixo
+            Bundle options = appWidgetManager.getAppWidgetOptions(appWidgetId);
+            int minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT);
+            if (minHeight < 100) {
+                layoutId = R.layout.widget_memo_small; // 1x1
+            } else {
+                layoutId = R.layout.widget_all_notes; // 1x2 (lista de todas notas)
+                isAllNotesList = true;
+            }
         }
         
         RemoteViews views = new RemoteViews(context.getPackageName(), layoutId);
 
         int alpha = (int) (settings.getTransparency() * 2.55);
-        int cardStyle = settings.getCardStyle();
         int currentTheme = settings.getTheme();
-        boolean isDarkTheme = (currentTheme == 1 || currentTheme == 2);
-
-        views.setViewVisibility(R.id.widget_color_bar, View.GONE);
+        boolean isDarkTheme = (currentTheme == 1);
 
         if (isAllNotesList) {
             int noteColor = Color.parseColor(EditActivity.noteColors[0]);
 
-            if (cardStyle == 1) {
-                float[] hsl = new float[3];
-                androidx.core.graphics.ColorUtils.colorToHSL(noteColor, hsl);
-                hsl[1] *= 0.4f;
-                hsl[2] = isDarkTheme ? 0.15f : 0.9f;
-                int pastelColor = androidx.core.graphics.ColorUtils.HSLToColor(hsl);
-                int finalColor = Color.argb(alpha, Color.red(pastelColor), Color.green(pastelColor), Color.blue(pastelColor));
-                views.setInt(R.id.widget_root, "setBackgroundColor", finalColor);
-            } else if (cardStyle == 2) {
-                int finalColor = Color.argb(alpha, Color.red(noteColor), Color.green(noteColor), Color.blue(noteColor));
-                views.setInt(R.id.widget_root, "setBackgroundColor", finalColor);
-            } else {
-                int rootColor = Color.argb(alpha, Color.red(noteColor), Color.green(noteColor), Color.blue(noteColor));
-                views.setInt(R.id.widget_root, "setBackgroundColor", rootColor);
-                int baseColor = isDarkTheme ? Color.parseColor("#4b4d4b") : Color.parseColor("#b4b2b4");
-                int blendR = (int)(Color.red(baseColor) * 0.8f + Color.red(noteColor) * 0.2f);
-                int blendG = (int)(Color.green(baseColor) * 0.8f + Color.green(noteColor) * 0.2f);
-                int blendB = (int)(Color.blue(baseColor) * 0.8f + Color.blue(noteColor) * 0.2f);
-                int blendedColor = Color.rgb(blendR, blendG, blendB);
-                int bgWithAlpha = Color.argb(alpha, Color.red(blendedColor), Color.green(blendedColor), Color.blue(blendedColor));
-                views.setInt(R.id.widget_content_container, "setBackgroundColor", bgWithAlpha);
-                views.setViewVisibility(R.id.widget_color_bar, View.GONE);
-            }
+            int rootColor = Color.argb(alpha, Color.red(noteColor), Color.green(noteColor), Color.blue(noteColor));
+            views.setInt(R.id.widget_root, "setBackgroundColor", rootColor);
+            int baseColor = isDarkTheme ? Color.parseColor("#4b4d4b") : Color.parseColor("#b4b2b4");
+            int blendR = (int)(Color.red(baseColor) * 0.8f + Color.red(noteColor) * 0.2f);
+            int blendG = (int)(Color.green(baseColor) * 0.8f + Color.green(noteColor) * 0.2f);
+            int blendB = (int)(Color.blue(baseColor) * 0.8f + Color.blue(noteColor) * 0.2f);
+            int blendedColor = Color.rgb(blendR, blendG, blendB);
+            int bgWithAlpha = Color.argb(alpha, Color.red(blendedColor), Color.green(blendedColor), Color.blue(blendedColor));
+            views.setInt(R.id.widget_content_container, "setBackgroundColor", bgWithAlpha);
 
             Intent serviceIntent = new Intent(context, AllNotesWidgetService.class);
             serviceIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
@@ -171,41 +159,19 @@ public class NoteWidgetProvider extends AppWidgetProvider {
 
             int noteColor = Color.parseColor(EditActivity.noteColors[note.color]);
 
-            if (cardStyle == 1) {
-                float[] hsl = new float[3];
-                androidx.core.graphics.ColorUtils.colorToHSL(noteColor, hsl);
-                hsl[1] *= 0.4f;
-                hsl[2] = isDarkTheme ? 0.15f : 0.9f;
-                int pastelColor = androidx.core.graphics.ColorUtils.HSLToColor(hsl);
-                int finalColor = Color.argb(alpha, Color.red(pastelColor), Color.green(pastelColor), Color.blue(pastelColor));
-                views.setInt(R.id.widget_root, "setBackgroundColor", finalColor);
-                views.setTextColor(R.id.widget_title, isDarkTheme ? Color.WHITE : 0xFF333333);
-            } else if (cardStyle == 2) {
-                int finalColor = Color.argb(alpha, Color.red(noteColor), Color.green(noteColor), Color.blue(noteColor));
-                views.setInt(R.id.widget_root, "setBackgroundColor", finalColor);
-                views.setTextColor(R.id.widget_title, isDarkTheme ? Color.WHITE : Color.BLACK);
-            } else {
-                int rootColor = Color.argb(alpha, Color.red(noteColor), Color.green(noteColor), Color.blue(noteColor));
-                views.setInt(R.id.widget_root, "setBackgroundColor", rootColor);
-                int baseColor = isDarkTheme ? Color.parseColor("#4b4d4b") : Color.parseColor("#b4b2b4");
-                int blendR = (int)(Color.red(baseColor) * 0.8f + Color.red(noteColor) * 0.2f);
-                int blendG = (int)(Color.green(baseColor) * 0.8f + Color.green(noteColor) * 0.2f);
-                int blendB = (int)(Color.blue(baseColor) * 0.8f + Color.blue(noteColor) * 0.2f);
-                int blendedColor = Color.rgb(blendR, blendG, blendB);
-                int bgWithAlpha = Color.argb(alpha, Color.red(blendedColor), Color.green(blendedColor), Color.blue(blendedColor));
-                views.setInt(R.id.widget_content_container, "setBackgroundColor", bgWithAlpha);
-                views.setViewVisibility(R.id.widget_color_bar, View.GONE);
-                views.setTextColor(R.id.widget_title, isDarkTheme ? Color.WHITE : Color.BLACK);
-            }
+            int rootColor = Color.argb(alpha, Color.red(noteColor), Color.green(noteColor), Color.blue(noteColor));
+            views.setInt(R.id.widget_root, "setBackgroundColor", rootColor);
+            int baseColor = isDarkTheme ? Color.parseColor("#4b4d4b") : Color.parseColor("#b4b2b4");
+            int blendR = (int)(Color.red(baseColor) * 0.8f + Color.red(noteColor) * 0.2f);
+            int blendG = (int)(Color.green(baseColor) * 0.8f + Color.green(noteColor) * 0.2f);
+            int blendB = (int)(Color.blue(baseColor) * 0.8f + Color.blue(noteColor) * 0.2f);
+            int blendedColor = Color.rgb(blendR, blendG, blendB);
+            int bgWithAlpha = Color.argb(alpha, Color.red(blendedColor), Color.green(blendedColor), Color.blue(blendedColor));
+            views.setInt(R.id.widget_content_container, "setBackgroundColor", bgWithAlpha);
+            views.setTextColor(R.id.widget_title, isDarkTheme ? Color.WHITE : Color.BLACK);
 
             if (layoutId != R.layout.widget_memo_small) {
-                if (cardStyle == 1) {
-                    views.setTextColor(R.id.widget_content, isDarkTheme ? 0xFFE0E0E0 : 0xFF555555);
-                } else if (cardStyle == 2) {
-                    views.setTextColor(R.id.widget_content, isDarkTheme ? 0xFFE0E0E0 : 0xFF222222);
-                } else {
-                    views.setTextColor(R.id.widget_content, isDarkTheme ? 0xFFE0E0E0 : Color.DKGRAY);
-                }
+                views.setTextColor(R.id.widget_content, isDarkTheme ? 0xFFE0E0E0 : Color.DKGRAY);
 
                 if (note.isLocked == 1) {
                     views.setTextViewText(R.id.widget_content, "Autentique-se no app para ver");

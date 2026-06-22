@@ -56,7 +56,6 @@ public class MainActivity extends AppCompatActivity {
 
         settings.addObserver(() -> runOnUiThread(() -> {
             applyTheme();
-            applyBgTheme();
             if (viewModel != null) {
                 viewModel.refreshNotes();
             }
@@ -67,40 +66,21 @@ public class MainActivity extends AppCompatActivity {
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        binding.bgView.setBackgroundResource(R.drawable.bg_geometric);
 
-        applyBgTheme();
         handleIncomingIntent();
 
         // Inicializa a UI diretamente
         initApp();
     }
 
-    private void applyBgTheme() {
-        int bgTheme = settings.getBgTheme();
-        if (bgTheme == 1) { // Mesh
-            binding.bgView.setBackgroundResource(R.drawable.bg_mesh);
-        } else if (bgTheme == 2) { // Geometric
-            binding.bgView.setBackgroundResource(R.drawable.bg_geometric);
-        } else { // Default
-            binding.bgView.setBackground(null);
-        }
-    }
-
     private void applyTheme() {
         int theme = settings.getTheme();
 
-        // Define o tema da Activity
-        if (theme == 1) {
-            setTheme(R.style.Theme_Notara_Pantera);
-        } else {
-            setTheme(R.style.Theme_Notara);
-        }
+        setTheme(R.style.Theme_Notara);
 
-        // Gerencia a cor dos ícones da barra de status usando a API do AndroidX
         WindowInsetsControllerCompat controller = new WindowInsetsControllerCompat(getWindow(), getWindow().getDecorView());
-
-        // Se theme == 0 (Light) ou theme == 3 (Dynamic Light), ícones pretos (true). Caso contrário, ícones brancos (false).
-        controller.setAppearanceLightStatusBars(theme == 0 || theme == 3);
+        controller.setAppearanceLightStatusBars(theme == 0);
     }
 
     private void requestBiometricAuth() {
@@ -664,8 +644,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (settings != null && binding != null) {
-            applyBgTheme();
-
             int columns = settings.getGridColumns();
             boolean uniform = settings.isUniformGridEnabled();
 

@@ -43,7 +43,7 @@
             android:windowSoftInputMode="adjustPan" />
         <activity
             android:name=".EditActivity"
-            android:windowSoftInputMode="adjustPan" />
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".SettingsActivity"
             android:label="Configurações" />
@@ -81,7 +81,8 @@
 
         <receiver
             android:name=".widget.NoteWidgetProvider"
-            android:exported="false">
+            android:exported="false"
+            android:label="@string/widget_label_1x1">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.notara.ACTION_WIDGET_CLICK" />
@@ -93,7 +94,8 @@
 
             <receiver
                 android:name=".widget.NoteWidgetProvider1x2"
-                android:exported="false">
+                android:exported="false"
+                android:label="@string/widget_label_1x2">
                 <intent-filter>
                     <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                     <action android:name="com.notara.ACTION_WIDGET_CLICK" />
@@ -105,7 +107,8 @@
 
                 <receiver
                     android:name=".widget.NoteWidgetProvider2x2"
-                    android:exported="false">
+                    android:exported="false"
+                    android:label="@string/widget_label_2x2">
                     <intent-filter>
                         <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                         <action android:name="com.notara.ACTION_WIDGET_CLICK" />

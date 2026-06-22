@@ -7,13 +7,6 @@
     android:orientation="vertical"
     android:background="@drawable/widget_background">
 
-    <!-- Barra de cor (design padrão da grade) -->
-    <FrameLayout
-        android:id="@+id/widget_color_bar"
-        android:layout_width="match_parent"
-        android:layout_height="4dp"
-        android:background="#4DB6AC" />
-
     <LinearLayout
         android:id="@+id/widget_content_container"
         android:layout_width="match_parent"

@@ -44,6 +44,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import com.notara.databinding.ActivityEditBinding;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import java.text.SimpleDateFormat;
@@ -72,6 +74,7 @@ public class EditActivity extends AppCompatActivity {
 
     private boolean isPreviewMode = false;
     private android.view.GestureDetector gestureDetector;
+    private int barHeight = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,6 +93,8 @@ public class EditActivity extends AppCompatActivity {
         if (isPreviewMode) {
             enablePreviewMode();
         }
+
+        updateUIState();
 
         // Detector de duplo clique para editar
         gestureDetector = new android.view.GestureDetector(this, new android.view.GestureDetector.SimpleOnGestureListener() {
@@ -141,12 +146,59 @@ public class EditActivity extends AppCompatActivity {
         updateColorIndicator();
         updateDate();
         setupListeners();
+        setupKeyboardListener();
+        binding.bottomAppBar.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+            int h = bottom - top;
+            if (h != barHeight && h > 0) {
+                barHeight = h;
+                updateBottomMargin();
+            }
+        });
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (!isPreviewMode && isUnlocked) {
+            enablePreviewMode();
+        } else {
+            super.onBackPressed();
+        }
     }
 
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
         gestureDetector.onTouchEvent(ev);
         return super.dispatchTouchEvent(ev);
+    }
+
+    private void setupKeyboardListener() {
+        View root = binding.getRoot();
+        root.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            if (isPreviewMode || !isUnlocked) return;
+            android.graphics.Rect r = new android.graphics.Rect();
+            root.getWindowVisibleDisplayFrame(r);
+            int heightDiff = root.getRootView().getHeight() - (r.bottom - r.top);
+            int threshold = (int) (200 * getResources().getDisplayMetrics().density);
+            if (heightDiff > threshold) {
+                if (barHeight == 0) barHeight = binding.bottomAppBar.getHeight();
+                binding.bottomAppBar.setVisibility(View.GONE);
+                setBottomMargin(0);
+            } else {
+                binding.bottomAppBar.setVisibility(View.VISIBLE);
+                int h = barHeight;
+                if (h == 0) h = binding.bottomAppBar.getHeight();
+                if (h > 0) setBottomMargin(h);
+            }
+        });
+    }
+
+    private void setBottomMargin(int margin) {
+        androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams params =
+            (androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams) binding.nestedScrollView.getLayoutParams();
+        if (params.bottomMargin != margin) {
+            params.bottomMargin = margin;
+            binding.nestedScrollView.requestLayout();
+        }
     }
 
     private void lockContent() {
@@ -202,6 +254,17 @@ public class EditActivity extends AppCompatActivity {
         
         if (isPreviewMode) {
             hideKeyboard();
+        }
+        updateBottomMargin();
+    }
+
+    private void updateBottomMargin() {
+        if (binding.bottomAppBar.getVisibility() == View.VISIBLE) {
+            int h = barHeight;
+            if (h == 0) h = binding.bottomAppBar.getHeight();
+            if (h > 0) setBottomMargin(h);
+        } else {
+            setBottomMargin(0);
         }
     }
 
@@ -352,39 +415,22 @@ public class EditActivity extends AppCompatActivity {
         binding.btnSave.setBackgroundColor(color);
 
         int currentTheme = settings.getTheme();
-        boolean isDarkTheme = (currentTheme == 1 || currentTheme == 2); // 1: Panther, 2: Dynamic Black
+        boolean isDarkTheme = (currentTheme == 1);
 
         android.graphics.drawable.GradientDrawable border = new android.graphics.drawable.GradientDrawable();
-        float[] hsl = new float[3];
-        androidx.core.graphics.ColorUtils.colorToHSL(color, hsl);
-        hsl[1] *= 0.4f;
-        hsl[2] = isDarkTheme ? 0.15f : 0.9f;
-        int pastelColor = androidx.core.graphics.ColorUtils.HSLToColor(hsl);
         int tintAlpha = (int) (255 * 0.3f);
         int tintColor = Color.argb(tintAlpha, Color.red(color), Color.green(color), Color.blue(color));
         border.setColor(tintColor);
         border.setStroke((int) (3 * getResources().getDisplayMetrics().density), color);
         border.setCornerRadius(12 * getResources().getDisplayMetrics().density);
-        binding.contentContainer.setBackground(border);
+        binding.nestedScrollView.setBackground(border);
 
-        if (settings.getCardStyle() == 1) { // Pastel
-            binding.getRoot().setBackgroundColor(pastelColor);
-
-            int textColor = isDarkTheme ? Color.WHITE : Color.BLACK;
-            int hintColor = isDarkTheme ? 0x80FFFFFF : 0x80000000;
-            binding.etTitle.setTextColor(textColor);
-            binding.etTitle.setHintTextColor(hintColor);
-            binding.editNoteText.setTextColor(textColor);
-            binding.editNoteText.setHintTextColor(hintColor);
-            binding.editNoteText.setLineColor(isDarkTheme ? 0x33FFFFFF : 0x33000000);
-        } else {
-            binding.getRoot().setBackground(null);
-            int textColor = isDarkTheme ? Color.WHITE : getThemeColor(android.R.attr.textColorPrimary);
-            int subColor = isDarkTheme ? 0xFFE0E0E0 : getThemeColor(android.R.attr.textColorSecondary);
-            binding.etTitle.setTextColor(textColor);
-            binding.editNoteText.setTextColor(subColor);
-            binding.editNoteText.setLineColor(color);
-        }
+        binding.getRoot().setBackground(null);
+        int textColor = isDarkTheme ? Color.WHITE : getThemeColor(android.R.attr.textColorPrimary);
+        int subColor = isDarkTheme ? 0xFFE0E0E0 : getThemeColor(android.R.attr.textColorSecondary);
+        binding.etTitle.setTextColor(textColor);
+        binding.editNoteText.setTextColor(subColor);
+        binding.editNoteText.setLineColor(color);
 
         android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
         shape.setShape(android.graphics.drawable.GradientDrawable.OVAL);

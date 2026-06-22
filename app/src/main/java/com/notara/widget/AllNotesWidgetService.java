@@ -61,7 +61,7 @@ public class AllNotesWidgetService extends RemoteViewsService {
             
             SettingsManager settings = new SettingsManager(context);
             int currentTheme = settings.getTheme();
-            boolean isDarkTheme = (currentTheme == 1 || currentTheme == 2);
+            boolean isDarkTheme = (currentTheme == 1);
             views.setTextColor(android.R.id.text1, isDarkTheme ? 0xFFE0E0E0 : Color.DKGRAY);
             views.setTextViewTextSize(android.R.id.text1, android.util.TypedValue.COMPLEX_UNIT_SP, 13);
 

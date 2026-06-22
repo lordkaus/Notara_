@@ -97,52 +97,24 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
 
         holder.binding.ivPin.setVisibility(note.isPinned == 1 ? View.VISIBLE : View.GONE);
         
-        // Usa a paleta sincronizada
         int color = getNoteColor(note.color);
-        int cardStyle = settings.getCardStyle();
         int currentTheme = settings.getTheme();
-        boolean isDarkTheme = (currentTheme == 1 || currentTheme == 2);
+        boolean isDarkTheme = (currentTheme == 1);
         int alpha = 51; // 20% fixo
-        float[] hsl = new float[3];
-        androidx.core.graphics.ColorUtils.colorToHSL(color, hsl);
-        hsl[1] *= 0.4f;
-        hsl[2] = isDarkTheme ? 0.15f : 0.9f;
-        int pastelColor = androidx.core.graphics.ColorUtils.HSLToColor(hsl);
-        int pastelWithAlpha = Color.argb(alpha, Color.red(pastelColor), Color.green(pastelColor), Color.blue(pastelColor));
 
-        if (cardStyle == 1) { // Pastel
-            holder.binding.colorBar.setVisibility(View.GONE);
-            holder.binding.cardNote.setCardBackgroundColor(pastelWithAlpha);
-            holder.binding.cardNote.setStrokeWidth(0);
-            int textColor = isDarkTheme ? Color.WHITE : 0xFF333333;
-            int subColor = isDarkTheme ? 0xFFE0E0E0 : 0xFF555555;
-            holder.binding.tvTitle.setTextColor(textColor);
-            holder.binding.tvContent.setTextColor(subColor);
-        } else if (cardStyle == 2) { // Solid
-            holder.binding.colorBar.setVisibility(View.GONE);
-            int solidWithAlpha = Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color));
-            holder.binding.cardNote.setCardBackgroundColor(solidWithAlpha);
-            holder.binding.cardNote.setStrokeWidth(0);
-            int textColor = isDarkTheme ? Color.WHITE : Color.BLACK; 
-            int subColor = isDarkTheme ? 0xFFE0E0E0 : 0xFF222222;
-            holder.binding.tvTitle.setTextColor(textColor);
-            holder.binding.tvContent.setTextColor(subColor);
-        } else { // Label (Padrão)
-            holder.binding.colorBar.setVisibility(View.GONE);
-            int baseColor = isDarkTheme ? Color.parseColor("#4b4d4b") : Color.parseColor("#b4b2b4");
-            int blendR = (int)(Color.red(baseColor) * 0.8f + Color.red(color) * 0.2f);
-            int blendG = (int)(Color.green(baseColor) * 0.8f + Color.green(color) * 0.2f);
-            int blendB = (int)(Color.blue(baseColor) * 0.8f + Color.blue(color) * 0.2f);
-            int blendedColor = Color.rgb(blendR, blendG, blendB);
-            int bgColor = Color.argb(alpha, Color.red(blendedColor), Color.green(blendedColor), Color.blue(blendedColor));
-            holder.binding.cardNote.setCardBackgroundColor(bgColor);
-            holder.binding.cardNote.setStrokeColor(color);
-            holder.binding.cardNote.setStrokeWidth(3);
-            int textColor = isDarkTheme ? Color.WHITE : Color.BLACK;
-            int subColor = isDarkTheme ? 0xFFE0E0E0 : Color.DKGRAY;
-            holder.binding.tvTitle.setTextColor(textColor);
-            holder.binding.tvContent.setTextColor(subColor);
-        }
+        int baseColor = isDarkTheme ? Color.parseColor("#4b4d4b") : Color.parseColor("#b4b2b4");
+        int blendR = (int)(Color.red(baseColor) * 0.8f + Color.red(color) * 0.2f);
+        int blendG = (int)(Color.green(baseColor) * 0.8f + Color.green(color) * 0.2f);
+        int blendB = (int)(Color.blue(baseColor) * 0.8f + Color.blue(color) * 0.2f);
+        int blendedColor = Color.rgb(blendR, blendG, blendB);
+        int bgColor = Color.argb(alpha, Color.red(blendedColor), Color.green(blendedColor), Color.blue(blendedColor));
+        holder.binding.cardNote.setCardBackgroundColor(bgColor);
+        holder.binding.cardNote.setStrokeColor(color);
+        holder.binding.cardNote.setStrokeWidth(3);
+        int textColor = isDarkTheme ? Color.WHITE : Color.BLACK;
+        int subColor = isDarkTheme ? 0xFFE0E0E0 : Color.DKGRAY;
+        holder.binding.tvTitle.setTextColor(textColor);
+        holder.binding.tvContent.setTextColor(subColor);
 
         holder.itemView.setOnClickListener(v -> {
             DatabaseHelper.Note noteData = notes.get(holder.getBindingAdapterPosition());

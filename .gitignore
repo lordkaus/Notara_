@@ -51,6 +51,14 @@ captures/
 .fdroidvcs-*
 tmp/
 
+# --- Arquivos não essenciais (apenas locais) ---
+AGENTS.md
+PROJECT_ANALYSIS.md
+README.md
+LICENSE
+.github/workflows/
+metadata/
+
 # --- Sistema e Logs ---
 *.log
 .DS_Store

@@ -86,20 +86,7 @@ public class SettingsActivity extends AppCompatActivity {
         });
     }
 
-    private void showRestartDialog() {
-        new MaterialAlertDialogBuilder(this)
-            .setTitle("Aplicar Alterações")
-            .setMessage("O aplicativo será reiniciado para aplicar as mudanças.")
-            .setPositiveButton("Ok", (d, w) -> {
-                Intent intent = new Intent(this, MainActivity.class);
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                startActivity(intent);
-                finishAffinity();
-                Runtime.getRuntime().exit(0);
-            })
-            .setNegativeButton("Agora não", null)
-            .show();
-    }
+
 
     private void setupToolbar() {
         MaterialToolbar toolbar = findViewById(R.id.settingsToolbar);
@@ -143,18 +130,6 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void setupThemeSettings() {
-        RadioGroup rg = findViewById(R.id.rgThemes);
-        int currentTheme = settings.getTheme();
-
-        if (currentTheme == 1) ((RadioButton) findViewById(R.id.rbPreto)).setChecked(true);
-        else ((RadioButton) findViewById(R.id.rbBranco)).setChecked(true);
-
-        rg.setOnCheckedChangeListener((group, checkedId) -> {
-            int newTheme = checkedId == R.id.rbBranco ? 0 : 1;
-            settings.setTheme(newTheme);
-            showRestartDialog();
-        });
-
         Slider sliderTrans = findViewById(R.id.sliderTransparency);
         android.widget.TextView tvTransValue = findViewById(R.id.tvTransparencyValue);
         int currentTrans = settings.getTransparency();

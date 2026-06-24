@@ -68,9 +68,7 @@ import java.util.Locale;
 public class ChecklistActivity extends AppCompatActivity {
     private ActivityChecklistBinding binding;
     private NoteViewModel viewModel;
-    private int lastImeInset = 0;
-    private int lastAppliedIme = -1;
-    private int lastAppliedBar = -1;
+    private int barHeight = 0;
     private List<CheckItem> items = new ArrayList<>();
     private CheckAdapter adapter;
     private int noteId = -1;
@@ -81,6 +79,8 @@ public class ChecklistActivity extends AppCompatActivity {
     private int alertType = 0;
     private DatabaseHelper.Note currentNote;
     private SecurityManager securityManager;
+
+    private long lastAddTime = 0;
 
     private SettingsManager settings;
     private boolean isUnlocked = false;
@@ -107,7 +107,14 @@ public class ChecklistActivity extends AppCompatActivity {
         binding = ActivityChecklistBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        setupBottomBarOffsetListener();
+        setupKeyboardListener();
+        binding.bottomAppBar.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+            int h = bottom - top;
+            if (h != barHeight && h > 0) {
+                barHeight = h;
+                updateBottomMargin();
+            }
+        });
 
         isPreviewMode = getIntent().getBooleanExtra("PREVIEW_MODE", false);
 
@@ -156,8 +163,6 @@ public class ChecklistActivity extends AppCompatActivity {
         setupDate();
         setupRecyclerView();
         setupListeners();
-
-        binding.contentContainer.post(() -> refreshMargin());
     }
 
     @Override
@@ -171,63 +176,51 @@ public class ChecklistActivity extends AppCompatActivity {
 
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
-        gestureDetector.onTouchEvent(ev);
+        // Só ativa o gesture detector em preview mode, onde double-tap é útil
+        // para alternar para edição. Em modo edição, double-tap não tem efeito.
+        if (isPreviewMode) {
+            gestureDetector.onTouchEvent(ev);
+        }
         return super.dispatchTouchEvent(ev);
     }
 
-    private void setupBottomBarOffsetListener() {
-        ViewCompat.setOnApplyWindowInsetsListener(binding.contentContainer, (v, insets) -> {
-            lastImeInset = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
-            refreshMargin();
-            return insets;
-        });
-
-        binding.getRoot().getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+    private void setupKeyboardListener() {
+        View root = binding.getRoot();
+        root.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            if (isPreviewMode || !isUnlocked) return;
             android.graphics.Rect r = new android.graphics.Rect();
-            binding.getRoot().getWindowVisibleDisplayFrame(r);
-            int screenHeight = binding.getRoot().getRootView().getHeight();
-            int keyboardHeight = screenHeight - r.bottom;
-            int prev = lastImeInset;
-            lastImeInset = Math.max(0, keyboardHeight);
-            if (lastImeInset != prev) {
-                refreshMargin();
+            root.getWindowVisibleDisplayFrame(r);
+            int heightDiff = root.getRootView().getHeight() - (r.bottom - r.top);
+            int threshold = (int) (200 * getResources().getDisplayMetrics().density);
+            if (heightDiff > threshold) {
+                if (barHeight == 0) barHeight = binding.bottomAppBar.getHeight();
+                binding.bottomAppBar.setVisibility(View.GONE);
+                setBottomMargin(0);
+            } else {
+                binding.bottomAppBar.setVisibility(View.VISIBLE);
+                int h = barHeight;
+                if (h == 0) h = binding.bottomAppBar.getHeight();
+                if (h > 0) setBottomMargin(h);
             }
         });
-
-        binding.bottomAppBar.addOnScrollStateChangedListener((view, state) -> {
-            refreshMargin();
-        });
-
-        binding.bottomAppBar.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
-            binding.bottomAppBar.post(() -> refreshMargin());
-        });
     }
 
-    private void refreshMargin() {
-        int barMargin = computeBarMargin();
-        int total = Math.max(lastImeInset, barMargin);
+    private void setBottomMargin(int margin) {
         ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) binding.contentContainer.getLayoutParams();
-
-        boolean imeChanged = lastImeInset != lastAppliedIme;
-        boolean barChanged = barMargin != lastAppliedBar;
-        boolean marginChanged = params.bottomMargin != total;
-
-        if (!imeChanged && !barChanged && !marginChanged) {
-            return;
-        }
-
-        lastAppliedIme = lastImeInset;
-        lastAppliedBar = barMargin;
-
-        if (params.bottomMargin != total) {
-            params.bottomMargin = total;
-            binding.contentContainer.setLayoutParams(params);
+        if (params.bottomMargin != margin) {
+            params.bottomMargin = margin;
+            binding.contentContainer.requestLayout();
         }
     }
 
-    private int computeBarMargin() {
-        if (binding.bottomAppBar.getVisibility() != View.VISIBLE) return 0;
-        return binding.bottomAppBar.getHeight();
+    private void updateBottomMargin() {
+        if (binding.bottomAppBar.getVisibility() == View.VISIBLE) {
+            int h = barHeight;
+            if (h == 0) h = binding.bottomAppBar.getHeight();
+            if (h > 0) setBottomMargin(h);
+        } else {
+            setBottomMargin(0);
+        }
     }
 
     private void lockContent() {
@@ -237,6 +230,7 @@ public class ChecklistActivity extends AppCompatActivity {
         binding.btnChecklistReminder.setVisibility(View.GONE);
         binding.btnChecklistAlarm.setVisibility(View.GONE);
         binding.btnConvertToText.setVisibility(View.GONE);
+        binding.btnSaveChecklist.setVisibility(View.GONE);
     }
 
     private void unlockContent() {
@@ -261,6 +255,7 @@ public class ChecklistActivity extends AppCompatActivity {
         boolean shouldShowControls = !isPreviewMode && isUnlocked;
         
         binding.bottomAppBar.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
+        binding.btnSaveChecklist.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
         binding.tilNewItem.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
         
         if (isUnlocked) {
@@ -276,13 +271,8 @@ public class ChecklistActivity extends AppCompatActivity {
         if (isPreviewMode) {
             hideKeyboard();
         }
-        
-        if (adapter != null) {
-            adapter.notifyItemRangeChanged(0, items.size());
-        }
 
-        refreshMargin();
-        binding.bottomAppBar.post(() -> refreshMargin());
+        updateBottomMargin();
     }
 
     private void updateEmptyView() {
@@ -441,6 +431,7 @@ public class ChecklistActivity extends AppCompatActivity {
             if (actionId == EditorInfo.IME_ACTION_DONE || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) { addNewItem(); return true; }
             return false;
         });
+        binding.btnSaveChecklist.setOnClickListener(v -> { save(); finish(); });
         binding.btnChecklistColorPicker.setOnClickListener(v -> showColorPicker());
         binding.btnChecklistAlarm.setOnClickListener(v -> showReminderDialog(1));
         binding.btnChecklistReminder.setOnClickListener(v -> showReminderDialog(0));
@@ -583,6 +574,9 @@ public class ChecklistActivity extends AppCompatActivity {
     }
 
     private void addNewItem() {
+        long now = System.currentTimeMillis();
+        if (now - lastAddTime < 500) return;
+        lastAddTime = now;
         String text = binding.etNewItem.getText().toString();
         if (!text.trim().isEmpty()) {
             items.add(new CheckItem(text.trim(), false));
@@ -692,6 +686,7 @@ public class ChecklistActivity extends AppCompatActivity {
     private void updateColorIndicator() {
         int color = Color.parseColor(EditActivity.noteColors[selectedColor % EditActivity.noteColors.length]);
         binding.topColorIndicator.setVisibility(View.GONE);
+        binding.btnSaveChecklist.setBackgroundTintList(android.content.res.ColorStateList.valueOf(color));
 
         int currentTheme = settings.getTheme();
         boolean isDarkTheme = (currentTheme == 1);
@@ -771,19 +766,12 @@ public class ChecklistActivity extends AppCompatActivity {
             h.binding.btnRemoveItem.setVisibility(isPreviewMode ? View.GONE : View.VISIBLE);
             
             // Permite detectar clique duplo para editar mesmo sobre o item
-            h.itemView.setOnTouchListener((v, event) -> {
-                gestureDetector.onTouchEvent(event);
-                if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
-                    v.performClick();
-                }
-                return false;
-            });
+            h.itemView.setOnTouchListener(null);
             h.binding.etItemName.setOnTouchListener((v, event) -> {
-                gestureDetector.onTouchEvent(event);
                 if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
                     v.performClick();
                 }
-                return isPreviewMode; // Consome o toque no preview para não abrir teclado, mas permite clique duplo
+                return isPreviewMode; // Consome o toque no preview para não abrir teclado
             });
 
             h.watcher = new android.text.TextWatcher() {

@@ -39,10 +39,7 @@ public class SettingsManager {
     public void setUniformGridEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_UNIFORM_GRID, enabled).apply(); notifyObservers(); }
 
     public int getTheme() {
-        int stored = prefs.getInt(KEY_THEME, 0);
-        // Remap old values: Light(0)->Branco(0), Pantera(1)->Preto(1), DynamicBlack(2)->Preto(1), DynamicLight(3)->Branco(0)
-        if (stored >= 2) return stored == 3 ? 0 : 1;
-        return stored;
+        return 1;
     }
     public void setTheme(int theme) { prefs.edit().putInt(KEY_THEME, theme).apply(); notifyObservers(); }
 

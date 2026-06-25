@@ -3,7 +3,7 @@
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="3dp"
+    android:padding="2dp"
     android:orientation="vertical"
     android:background="@drawable/widget_background">
 
@@ -12,22 +12,12 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="8dp">
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textStyle="bold"
-            android:textSize="14sp"
-            android:textColor="#FFFFFF" />
+        android:padding="4dp">
 
         <ListView
             android:id="@+id/widget_all_notes_list"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:layout_marginTop="4dp"
+            android:layout_height="match_parent"
             android:divider="#22FFFFFF"
             android:dividerHeight="1dp" />
     </LinearLayout>

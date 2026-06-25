@@ -54,7 +54,7 @@ public class AllNotesWidgetService extends RemoteViewsService {
             if (position < 0 || position >= notes.size()) return null;
             
             DatabaseHelper.Note note = notes.get(position);
-            RemoteViews views = new RemoteViews(context.getPackageName(), android.R.layout.simple_list_item_1);
+            RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_all_notes_item);
             
             String title = note.isLocked == 1 ? "* Nota Protegida" : (note.title.isEmpty() ? com.notara.DatabaseHelper.Note.extractTitle(note.content) : note.title);
             views.setTextViewText(android.R.id.text1, title);
@@ -63,7 +63,8 @@ public class AllNotesWidgetService extends RemoteViewsService {
             int currentTheme = settings.getTheme();
             boolean isDarkTheme = (currentTheme == 1);
             views.setTextColor(android.R.id.text1, isDarkTheme ? 0xFFE0E0E0 : Color.DKGRAY);
-            views.setTextViewTextSize(android.R.id.text1, android.util.TypedValue.COMPLEX_UNIT_SP, 13);
+            views.setTextViewTextSize(android.R.id.text1, android.util.TypedValue.COMPLEX_UNIT_SP, 14);
+
 
             // Intent para abrir a nota ao clicar
             Bundle extras = new Bundle();

@@ -72,4 +72,5 @@
     <string name="widget_label_1x1">Title</string>
     <string name="widget_label_1x2">List</string>
     <string name="widget_label_2x2">Full Note</string>
+    <string name="widget_config_title">Choose the list background color</string>
 </resources>

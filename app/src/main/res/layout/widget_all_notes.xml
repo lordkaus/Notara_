@@ -18,7 +18,7 @@
             android:id="@+id/widget_all_notes_list"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:divider="#22FFFFFF"
-            android:dividerHeight="1dp" />
+            android:divider="@null"
+            android:dividerHeight="0dp" />
     </LinearLayout>
 </LinearLayout>

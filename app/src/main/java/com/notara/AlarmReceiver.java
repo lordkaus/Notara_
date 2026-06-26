@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.provider.Settings;
 import androidx.core.app.NotificationCompat;
+import com.notara.widget.NoteWidgetProvider;
 import java.util.Calendar;
 
 public class AlarmReceiver extends BroadcastReceiver {
@@ -157,6 +158,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         // Persiste a mudança no banco de dados para que o alarme não se perca após reinicialização
         NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
         repository.updateNote(note);
+        NoteWidgetProvider.updateAllWidgets(context);
         
         rescheduleAlarm(context, note);
     }

@@ -20,6 +20,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.notara.widget.NoteWidgetProvider;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -179,6 +180,7 @@ public class AlarmActivity extends AppCompatActivity {
             for (CheckItem i : checkItems) sb.append(i.name).append("::").append(i.checked ? "1" : "0").append("\n");
             currentNote.content = sb.toString();
             db.updateNote(currentNote);
+            NoteWidgetProvider.updateAllWidgets(this);
         }
     }
 

@@ -72,4 +72,5 @@
     <string name="widget_label_1x1">Título</string>
     <string name="widget_label_1x2">Lista</string>
     <string name="widget_label_2x2">Nota Completa</string>
+    <string name="widget_config_title">Escolha a cor de fundo da lista</string>
 </resources>

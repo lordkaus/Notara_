@@ -127,6 +127,15 @@
                         </intent-filter>
                     </activity>
 
+                    <activity
+                        android:name=".widget.WidgetConfigActivity1x2"
+                        android:exported="true"
+                        android:theme="@style/Theme.Notara">
+                        <intent-filter>
+                            <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+                        </intent-filter>
+                    </activity>
+
                     <service
                         android:name=".widget.NoteWidgetService"
                         android:permission="android.permission.BIND_REMOTEVIEWS" />

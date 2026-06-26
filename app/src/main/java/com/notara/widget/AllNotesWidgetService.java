@@ -2,11 +2,14 @@ package com.notara.widget;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
 
+import com.notara.EditActivity;
 import com.notara.NoteRepository;
 import com.notara.NoteRepositoryImpl;
 import com.notara.DatabaseHelper;
@@ -59,6 +62,12 @@ public class AllNotesWidgetService extends RemoteViewsService {
             String title = note.isLocked == 1 ? "* Nota Protegida" : (note.title.isEmpty() ? com.notara.DatabaseHelper.Note.extractTitle(note.content) : note.title);
             views.setTextViewText(android.R.id.text1, title);
             
+            int colorIndex = Math.min(Math.max(note.color, 0), EditActivity.noteColors.length - 1);
+            int noteColor = Color.parseColor(EditActivity.noteColors[colorIndex]);
+            int[] pixels = new int[]{noteColor};
+            Bitmap bmp = Bitmap.createBitmap(pixels, 1, 1, Bitmap.Config.ARGB_8888);
+            views.setImageViewBitmap(R.id.divider, bmp);
+
             SettingsManager settings = new SettingsManager(context);
             int currentTheme = settings.getTheme();
             boolean isDarkTheme = (currentTheme == 1);

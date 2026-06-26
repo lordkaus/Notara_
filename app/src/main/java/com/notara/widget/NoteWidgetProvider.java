@@ -131,7 +131,8 @@ public class NoteWidgetProvider extends AppWidgetProvider {
         boolean isDarkTheme = (currentTheme == 1);
 
         if (isAllNotesList) {
-            int noteColor = Color.parseColor(EditActivity.noteColors[0]);
+            int selectedColor = context.getSharedPreferences("widget_prefs", Context.MODE_PRIVATE).getInt("color_" + appWidgetId, 0);
+            int noteColor = Color.parseColor(EditActivity.noteColors[Math.min(Math.max(selectedColor, 0), EditActivity.noteColors.length - 1)]);
 
             int rootColor = Color.argb(alpha, Color.red(noteColor), Color.green(noteColor), Color.blue(noteColor));
             views.setInt(R.id.widget_root, "setBackgroundColor", rootColor);
@@ -152,8 +153,6 @@ public class NoteWidgetProvider extends AppWidgetProvider {
             clickIntent.setAction(ACTION_WIDGET_CLICK);
             PendingIntent pendingIntent = PendingIntent.getBroadcast(context, appWidgetId + 2000, clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
             views.setPendingIntentTemplate(R.id.widget_all_notes_list, pendingIntent);
-
-            appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_all_notes_list);
 
         } else if (note != null) {
             views.setTextViewText(R.id.widget_title, note.isLocked == 1 ? "* Nota Protegida" : note.title);
@@ -187,7 +186,6 @@ public class NoteWidgetProvider extends AppWidgetProvider {
                     serviceIntent.putExtra("NOTE_ID", note.id);
                     serviceIntent.setData(Uri.parse(serviceIntent.toUri(Intent.URI_INTENT_SCHEME)));
                     views.setRemoteAdapter(R.id.widget_list, serviceIntent);
-                    appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list);
                 } else {
                     views.setViewVisibility(R.id.widget_list, View.GONE);
                     views.setViewVisibility(R.id.widget_content, View.VISIBLE);
@@ -213,5 +211,7 @@ public class NoteWidgetProvider extends AppWidgetProvider {
         }
 
         appWidgetManager.updateAppWidget(appWidgetId, views);
+        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_all_notes_list);
+        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list);
     }
 }

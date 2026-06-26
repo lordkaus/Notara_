@@ -80,7 +80,7 @@
         </receiver>
 
         <receiver
-            android:name=".widget.NoteWidgetProvider"
+            android:name=".widget.NoteWidgetProvider1x1"
             android:exported="false"
             android:label="@string/widget_label_1x1">
             <intent-filter>

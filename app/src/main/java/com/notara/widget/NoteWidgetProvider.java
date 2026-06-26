@@ -8,7 +8,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
-import android.os.Bundle;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -87,7 +86,7 @@ public class NoteWidgetProvider extends AppWidgetProvider {
 
     public static void updateAllWidgets(Context context) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
-        int[] ids1x1 = manager.getAppWidgetIds(new ComponentName(context, NoteWidgetProvider.class));
+        int[] ids1x1 = manager.getAppWidgetIds(new ComponentName(context, NoteWidgetProvider1x1.class));
         int[] ids1x2 = manager.getAppWidgetIds(new ComponentName(context, NoteWidgetProvider1x2.class));
         int[] ids2x2 = manager.getAppWidgetIds(new ComponentName(context, NoteWidgetProvider2x2.class));
         
@@ -109,19 +108,24 @@ public class NoteWidgetProvider extends AppWidgetProvider {
             if (id == appWidgetId) { is2x2 = true; break; }
         }
 
+        boolean is1x2 = false;
+        for (int id : appWidgetManager.getAppWidgetIds(new ComponentName(context, NoteWidgetProvider1x2.class))) {
+            if (id == appWidgetId) { is1x2 = true; break; }
+        }
+
+        Class<?> providerClass;
         int layoutId;
         boolean isAllNotesList = false;
         if (is2x2) {
+            providerClass = NoteWidgetProvider2x2.class;
             layoutId = R.layout.widget_note_2x2;
+        } else if (is1x2) {
+            providerClass = NoteWidgetProvider1x2.class;
+            layoutId = R.layout.widget_all_notes;
+            isAllNotesList = true;
         } else {
-            Bundle options = appWidgetManager.getAppWidgetOptions(appWidgetId);
-            int minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT);
-            if (minHeight < 100) {
-                layoutId = R.layout.widget_memo_small; // 1x1
-            } else {
-                layoutId = R.layout.widget_all_notes; // 1x2 (lista de todas notas)
-                isAllNotesList = true;
-            }
+            providerClass = NoteWidgetProvider1x1.class;
+            layoutId = R.layout.widget_memo_small;
         }
         
         RemoteViews views = new RemoteViews(context.getPackageName(), layoutId);
@@ -149,7 +153,7 @@ public class NoteWidgetProvider extends AppWidgetProvider {
             serviceIntent.setData(Uri.parse(serviceIntent.toUri(Intent.URI_INTENT_SCHEME)));
             views.setRemoteAdapter(R.id.widget_all_notes_list, serviceIntent);
 
-            Intent clickIntent = new Intent(context, NoteWidgetProvider.class);
+            Intent clickIntent = new Intent(context, providerClass);
             clickIntent.setAction(ACTION_WIDGET_CLICK);
             PendingIntent pendingIntent = PendingIntent.getBroadcast(context, appWidgetId + 2000, clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
             views.setPendingIntentTemplate(R.id.widget_all_notes_list, pendingIntent);
@@ -192,14 +196,14 @@ public class NoteWidgetProvider extends AppWidgetProvider {
                     views.setTextViewText(R.id.widget_content, note.content);
                 }
 
-                Intent listClickIntent = new Intent(context, NoteWidgetProvider.class);
+                Intent listClickIntent = new Intent(context, providerClass);
                 listClickIntent.setAction(ACTION_WIDGET_CLICK);
                 listClickIntent.putExtra("NOTE_ID", note.id);
                 PendingIntent listPendingIntent = PendingIntent.getBroadcast(context, appWidgetId + 1000, listClickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
                 views.setPendingIntentTemplate(R.id.widget_list, listPendingIntent);
             }
 
-            Intent clickIntent = new Intent(context, NoteWidgetProvider.class);
+            Intent clickIntent = new Intent(context, providerClass);
             clickIntent.setAction(ACTION_WIDGET_CLICK);
             clickIntent.putExtra("NOTE_ID", note.id);
             PendingIntent pendingIntent = PendingIntent.getBroadcast(context, appWidgetId, clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);

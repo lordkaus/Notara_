@@ -45,6 +45,7 @@ import android.widget.Spinner;
 import android.widget.TimePicker;
 import android.widget.Toast;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -162,16 +163,17 @@ public class ChecklistActivity extends AppCompatActivity {
         updateColorIndicator();
         setupDate();
         setupRecyclerView();
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (!isPreviewMode && isUnlocked) {
+                    enablePreviewMode();
+                } else {
+                    finish();
+                }
+            }
+        });
         setupListeners();
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (!isPreviewMode && isUnlocked) {
-            enablePreviewMode();
-        } else {
-            super.onBackPressed();
-        }
     }
 
     @Override
@@ -379,8 +381,8 @@ public class ChecklistActivity extends AppCompatActivity {
 
             @Override
             public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
-                int fromPos = viewHolder.getAdapterPosition();
-                int toPos = target.getAdapterPosition();
+                int fromPos = viewHolder.getBindingAdapterPosition();
+                int toPos = target.getBindingAdapterPosition();
                 if (fromPos != RecyclerView.NO_POSITION && toPos != RecyclerView.NO_POSITION) {
                     java.util.Collections.swap(items, fromPos, toPos);
                     adapter.notifyItemMoved(fromPos, toPos);
@@ -792,7 +794,7 @@ public class ChecklistActivity extends AppCompatActivity {
             });
 
             h.binding.btnRemoveItem.setOnClickListener(v -> {
-                int pos = h.getAdapterPosition();
+                int pos = h.getBindingAdapterPosition();
                 if (pos != RecyclerView.NO_POSITION) {
                     items.remove(pos);
                     notifyItemRemoved(pos);

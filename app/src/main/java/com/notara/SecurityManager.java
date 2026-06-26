@@ -216,6 +216,7 @@ public class SecurityManager {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private SharedPreferences getEncryptedPrefs() throws Exception {
         MasterKey masterKey = new MasterKey.Builder(context)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)

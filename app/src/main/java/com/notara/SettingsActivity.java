@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -45,6 +46,7 @@ public class SettingsActivity extends AppCompatActivity {
         setupToquesSettings();
         setupThemeSettings();
 
+        setupVersionInfo();
         setupSecuritySettings();
         setupPlanningSettings();
         setupDataManagement();
@@ -118,6 +120,11 @@ public class SettingsActivity extends AppCompatActivity {
         SwitchMaterial sw24h = findViewById(R.id.switch24h);
         sw24h.setChecked(settings.is24HourFormat());
         sw24h.setOnCheckedChangeListener((v, checked) -> settings.set24HourFormat(checked));
+    }
+
+    private void setupVersionInfo() {
+        TextView tvVersion = findViewById(R.id.tvVersion);
+        tvVersion.setText("v" + BuildConfig.VERSION_NAME + " (Build " + BuildConfig.VERSION_CODE + ")");
     }
 
     private void setupToquesSettings() {

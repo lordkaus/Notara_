@@ -38,6 +38,7 @@ import android.widget.Spinner;
 import android.widget.TimePicker;
 import android.widget.Toast;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.biometric.BiometricPrompt;
 import androidx.appcompat.app.AlertDialog;
@@ -95,8 +96,19 @@ public class EditActivity extends AppCompatActivity {
         }
         
         isPreviewMode = getIntent().getBooleanExtra("PREVIEW_MODE", false);
-
         binding = ActivityEditBinding.inflate(getLayoutInflater());
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (!isPreviewMode && isUnlocked) {
+                    enablePreviewMode();
+                } else {
+                    finish();
+                }
+            }
+        });
+
         setContentView(binding.getRoot());
 
         // Configuração de modo preview
@@ -166,15 +178,6 @@ public class EditActivity extends AppCompatActivity {
                 updateBottomMargin();
             }
         });
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (!isPreviewMode && isUnlocked) {
-            enablePreviewMode();
-        } else {
-            super.onBackPressed();
-        }
     }
 
     @Override

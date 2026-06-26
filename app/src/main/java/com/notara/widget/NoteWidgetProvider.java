@@ -96,6 +96,7 @@ public class NoteWidgetProvider extends AppWidgetProvider {
         for (int id : ids2x2) updateAppWidget(context, manager, id);
     }
 
+    @SuppressWarnings("deprecation")
     static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         SettingsManager settings = new SettingsManager(context);
         int noteId = context.getSharedPreferences("widget_prefs", Context.MODE_PRIVATE).getInt("note_" + appWidgetId, -1);

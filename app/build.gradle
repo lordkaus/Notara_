@@ -40,8 +40,8 @@ android {
         applicationId "com.notara"
         minSdk 23
         targetSdk 35
-        versionCode 6
-        versionName "1.2.2"
+        versionCode 8
+        versionName "2.2"
         resConfigs "pt-rBR", "en"
     }
 
@@ -80,12 +80,17 @@ android {
 
     buildFeatures {
         viewBinding true
+        buildConfig true
     }
 
     compileOptions {
         coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.compilerArgs += ['-Xlint:all']
     }
 }
 

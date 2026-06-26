@@ -29,6 +29,8 @@ import android.text.TextWatcher;
 import android.view.View;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -47,6 +49,9 @@ public class MainActivity extends AppCompatActivity {
     private SecurityManager securityManager;
     private SecurityDataStore securityDataStore;
     private boolean isAuthenticated = false;
+    private ActivityResultLauncher<Intent> textExportLauncher;
+    private ActivityResultLauncher<Intent> secureExportLauncher;
+    private String secureExportPassword;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,6 +77,15 @@ public class MainActivity extends AppCompatActivity {
 
         // Inicializa a UI diretamente
         initApp();
+
+        textExportLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            this::handleTextExportResult
+        );
+        secureExportLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            this::handleSecureExportResult
+        );
     }
 
     private void applyTheme() {
@@ -231,14 +245,13 @@ public class MainActivity extends AppCompatActivity {
             .show();
     }
 
-    private String secureExportPassword;
     private void launchSecureFilePicker() {
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         // ALTERAÇÃO: application/octet-stream impede que o Android tente "corrigir" a extensão
         intent.setType("application/octet-stream"); 
         intent.putExtra(Intent.EXTRA_TITLE, getSanitizedBaseName(noteToExport.title) + ".savage");
-        startActivityForResult(intent, REQUEST_CODE_CREATE_FILE + 1);
+        secureExportLauncher.launch(intent);
     }
 
     private void pinWidget(DatabaseHelper.Note note) {
@@ -308,7 +321,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private DatabaseHelper.Note noteToExport;
-    private static final int REQUEST_CODE_CREATE_FILE = 1002;
 
     private void shareNoteNormally(DatabaseHelper.Note note) {
         if (note.isLocked == 1) {
@@ -349,7 +361,7 @@ public class MainActivity extends AppCompatActivity {
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("text/plain");
         intent.putExtra(Intent.EXTRA_TITLE, getSanitizedBaseName(noteToExport.title) + ".txt");
-        startActivityForResult(intent, REQUEST_CODE_CREATE_FILE);
+        textExportLauncher.launch(intent);
     }
 
     private String formatNoteForExport(DatabaseHelper.Note note) {
@@ -378,34 +390,35 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == RESULT_OK && data != null && data.getData() != null) {
-            if (requestCode == REQUEST_CODE_CREATE_FILE) {
-                try {
-                    String content = formatNoteForExport(noteToExport);
-                    java.io.OutputStream os = getContentResolver().openOutputStream(data.getData());
-                    os.write(content.getBytes());
-                    os.close();
-                    Toast.makeText(this, "Arquivo salvo com sucesso!", Toast.LENGTH_SHORT).show();
-                } catch (Exception e) {
-                    Toast.makeText(this, "Erro ao salvar arquivo: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                }
-            } else if (requestCode == REQUEST_CODE_CREATE_FILE + 1) {
-                try {
-                    String content = formatNoteForExport(noteToExport);
-                    String encrypted = SecurityHelper.encryptForSharing("NOTARA_SECURE_NOTE\nTITLE: " + noteToExport.title + "\nCONTENT: " + content, secureExportPassword);
-                    java.io.OutputStream os = getContentResolver().openOutputStream(data.getData());
-                    os.write(encrypted.getBytes());
-                    os.close();
-                    Toast.makeText(this, "Arquivo .savage protegido salvo!", Toast.LENGTH_SHORT).show();
-                } catch (Exception e) {
-                    Toast.makeText(this, "Erro na criptografia: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                }
+    private void handleTextExportResult(androidx.activity.result.ActivityResult result) {
+        if (result.getResultCode() == RESULT_OK && result.getData() != null && result.getData().getData() != null) {
+            try {
+                String content = formatNoteForExport(noteToExport);
+                java.io.OutputStream os = getContentResolver().openOutputStream(result.getData().getData());
+                os.write(content.getBytes());
+                os.close();
+                Toast.makeText(this, "Arquivo salvo com sucesso!", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "Erro ao salvar arquivo: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
         }
     }
+
+    private void handleSecureExportResult(androidx.activity.result.ActivityResult result) {
+        if (result.getResultCode() == RESULT_OK && result.getData() != null && result.getData().getData() != null) {
+            try {
+                String content = formatNoteForExport(noteToExport);
+                String encrypted = SecurityHelper.encryptForSharing("NOTARA_SECURE_NOTE\nTITLE: " + noteToExport.title + "\nCONTENT: " + content, secureExportPassword);
+                java.io.OutputStream os = getContentResolver().openOutputStream(result.getData().getData());
+                os.write(encrypted.getBytes());
+                os.close();
+                Toast.makeText(this, "Arquivo .savage protegido salvo!", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "Erro na criptografia: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
     private void shareNoteSecurely(DatabaseHelper.Note note) {
         if (note.isLocked == 1) {
             securityManager.authenticate(this,

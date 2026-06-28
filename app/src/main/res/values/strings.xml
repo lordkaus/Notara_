@@ -73,4 +73,18 @@
     <string name="widget_label_1x2">Lista</string>
     <string name="widget_label_2x2">Nota Completa</string>
     <string name="widget_config_title">Escolha a cor de fundo da lista</string>
+
+    <string name="backup_section">Backup</string>
+    <string name="backup_export">Fazer Backup</string>
+    <string name="backup_encrypted">Backup Criptografado</string>
+    <string name="backup_restore">Restaurar Backup</string>
+    <string name="backup_password_hint">Digite a senha do backup</string>
+    <string name="backup_password_confirm">Confirmar Senha</string>
+    <string name="backup_empty">Nenhuma nota para backup</string>
+    <string name="backup_success">Backup salvo com sucesso</string>
+    <string name="backup_restored">%d nota(s) restaurada(s)</string>
+    <string name="backup_invalid">Arquivo de backup inválido</string>
+    <string name="backup_wrong_password">Senha incorreta</string>
+    <string name="backup_read_error">Erro ao ler arquivo de backup</string>
+    <string name="backup_password_mismatch">Senhas não conferem</string>
 </resources>

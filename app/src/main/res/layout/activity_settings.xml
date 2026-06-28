@@ -319,6 +319,67 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- SEÇÃO: BACKUP -->
+            <TextView 
+                android:layout_width="match_parent" 
+                android:layout_height="wrap_content"
+                android:text="@string/backup_section" 
+                android:textColor="?attr/colorPrimary" 
+                android:textSize="13sp"
+                android:textStyle="bold" 
+                android:textAllCaps="true"
+                android:letterSpacing="0.1"
+                android:layout_marginBottom="12dp"
+                android:layout_marginStart="4dp" />
+
+            <com.google.android.material.card.MaterialCardView 
+                android:layout_width="match_parent" 
+                android:layout_height="wrap_content" 
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                android:layout_marginBottom="24dp">
+
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                    <com.google.android.material.button.MaterialButton 
+                        android:id="@+id/btnBackup" 
+                        style="@style/Widget.Material3.Button.TextButton" 
+                        android:layout_width="match_parent" 
+                        android:layout_height="wrap_content" 
+                        android:text="@string/backup_export" 
+                        android:gravity="start|center_vertical" 
+                        android:padding="16dp" 
+                        app:icon="@drawable/ic_save"
+                        app:iconPadding="16dp"
+                        android:textColor="?attr/colorOnSurface" />
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?attr/colorOutlineVariant" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" />
+                    <com.google.android.material.button.MaterialButton 
+                        android:id="@+id/btnBackupEncrypted" 
+                        style="@style/Widget.Material3.Button.TextButton" 
+                        android:layout_width="match_parent" 
+                        android:layout_height="wrap_content" 
+                        android:text="@string/backup_encrypted" 
+                        android:gravity="start|center_vertical" 
+                        android:padding="16dp" 
+                        app:icon="@drawable/ic_lock"
+                        app:iconPadding="16dp"
+                        android:textColor="?attr/colorOnSurface" />
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?attr/colorOutlineVariant" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" />
+                    <com.google.android.material.button.MaterialButton 
+                        android:id="@+id/btnRestoreBackup" 
+                        style="@style/Widget.Material3.Button.TextButton" 
+                        android:layout_width="match_parent" 
+                        android:layout_height="wrap_content" 
+                        android:text="@string/backup_restore" 
+                        android:gravity="start|center_vertical" 
+                        android:padding="16dp" 
+                        app:icon="@drawable/ic_revert"
+                        app:iconPadding="16dp"
+                        android:textColor="?attr/colorOnSurface" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- SEÇÃO: SOBRE -->
             <com.google.android.material.card.MaterialCardView 
                 android:layout_width="match_parent" 

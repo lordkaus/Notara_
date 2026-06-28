@@ -73,4 +73,18 @@
     <string name="widget_label_1x2">List</string>
     <string name="widget_label_2x2">Full Note</string>
     <string name="widget_config_title">Choose the list background color</string>
+
+    <string name="backup_section">Backup</string>
+    <string name="backup_export">Backup</string>
+    <string name="backup_encrypted">Encrypted Backup</string>
+    <string name="backup_restore">Restore Backup</string>
+    <string name="backup_password_hint">Enter backup password</string>
+    <string name="backup_password_confirm">Confirm Password</string>
+    <string name="backup_empty">No notes to backup</string>
+    <string name="backup_success">Backup saved successfully</string>
+    <string name="backup_restored">%d note(s) restored</string>
+    <string name="backup_invalid">Invalid backup file</string>
+    <string name="backup_wrong_password">Wrong password</string>
+    <string name="backup_read_error">Error reading backup file</string>
+    <string name="backup_password_mismatch">Passwords do not match</string>
 </resources>

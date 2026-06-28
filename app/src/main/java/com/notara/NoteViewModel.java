@@ -72,6 +72,7 @@ public class NoteViewModel extends AndroidViewModel {
     public long addNote(DatabaseHelper.Note note) {
         long id = repository.addNote(note);
         com.notara.widget.NoteWidgetProvider.updateAllWidgets(getApplication());
+        refreshNotes();
         return id;
     }
 

@@ -11,15 +11,18 @@ import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
-import androidx.security.crypto.EncryptedSharedPreferences;
-import androidx.security.crypto.MasterKey;
 
 import java.util.concurrent.Executor;
 
 /**
  * Gerenciador de segurança responsável pela validação de identidade do usuário.
  * Integra Biometria do Sistema e Senha Interna (fallback).
+ *
+ * Uses EncryptedSharedPreferences/MasterKey (deprecated in 1.1.0, but no viable
+ * replacement exists that preserves at-rest encryption — "use SharedPreferences"
+ * would remove encryption entirely).
  */
+@SuppressWarnings("deprecation")
 public class SecurityManager {
 
     public interface AuthCallback {
@@ -216,18 +219,17 @@ public class SecurityManager {
         }
     }
 
-    @SuppressWarnings("deprecation")
     private SharedPreferences getEncryptedPrefs() throws Exception {
-        MasterKey masterKey = new MasterKey.Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        androidx.security.crypto.MasterKey masterKey = new androidx.security.crypto.MasterKey.Builder(context)
+                .setKeyScheme(androidx.security.crypto.MasterKey.KeyScheme.AES256_GCM)
                 .build();
 
-        return EncryptedSharedPreferences.create(
+        return androidx.security.crypto.EncryptedSharedPreferences.create(
                 context,
                 "notara_secure_storage",
                 masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                androidx.security.crypto.EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         );
     }
 }

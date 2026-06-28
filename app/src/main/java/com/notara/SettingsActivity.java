@@ -1,11 +1,16 @@
 package com.notara;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
+import android.os.Environment;
+import android.provider.DocumentsContract;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.lifecycle.ViewModelProvider;
@@ -13,13 +18,22 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.switchmaterial.SwitchMaterial;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.List;
+import java.util.function.Consumer;
+import android.widget.LinearLayout;
 
 public class SettingsActivity extends AppCompatActivity {
     private SettingsManager settings;
     private NoteViewModel viewModel;
     private SecurityManager securityManager;
     private SecurityDataStore securityDataStore;
+    private String pendingPassword;
+    private ActivityResultLauncher<Intent> exportLauncher;
+    private ActivityResultLauncher<Intent> importLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,6 +64,268 @@ public class SettingsActivity extends AppCompatActivity {
         setupSecuritySettings();
         setupPlanningSettings();
         setupDataManagement();
+        setupBackupSettings();
+
+        handleBackupIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleBackupIntent(intent);
+    }
+
+    private void setupBackupSettings() {
+        exportLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            (ActivityResult result) -> {
+                if (result.getResultCode() != RESULT_OK || result.getData() == null) return;
+                Uri uri = result.getData().getData();
+                if (uri == null) return;
+                try {
+                    NoteRepository repo = new NoteRepositoryImpl(new DatabaseHelper(this));
+                    List<DatabaseHelper.Note> notes = repo.searchNotes("", false, null);
+                    if (notes.isEmpty()) {
+                        Toast.makeText(this, R.string.backup_empty, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    String data = BackupManager.serialize(notes);
+                    if (pendingPassword != null) {
+                        data = BackupManager.encrypt(data, pendingPassword);
+                        pendingPassword = null;
+                    }
+                    try (OutputStream os = getContentResolver().openOutputStream(uri)) {
+                        BackupManager.write(os, data);
+                    }
+                    Toast.makeText(this, R.string.backup_success, Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    Toast.makeText(this, getString(R.string.backup_read_error) + ": " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            }
+        );
+
+        importLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            (ActivityResult result) -> {
+                if (result.getResultCode() != RESULT_OK || result.getData() == null) return;
+                Uri uri = result.getData().getData();
+                if (uri == null) return;
+                String data;
+                try {
+                    data = readUriContent(uri);
+                } catch (Exception e) {
+                    Toast.makeText(this, getString(R.string.backup_read_error) + ": " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    return;
+                }
+                boolean encrypted = BackupManager.isEncrypted(data);
+                if (encrypted) {
+                    promptPassword((password) -> doRestore(data, password));
+                } else {
+                    doRestore(data, null);
+                }
+            }
+        );
+
+        findViewById(R.id.btnBackup).setOnClickListener(v -> {
+            pendingPassword = null;
+            launchExport();
+        });
+
+        findViewById(R.id.btnBackupEncrypted).setOnClickListener(v -> {
+            promptPassword((password) -> {
+                pendingPassword = password;
+                launchExport();
+            });
+        });
+
+        findViewById(R.id.btnRestoreBackup).setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("*/*");
+            importLauncher.launch(intent);
+        });
+    }
+
+    private void launchExport() {
+        NoteRepository repo = new NoteRepositoryImpl(new DatabaseHelper(this));
+        List<DatabaseHelper.Note> notes = repo.searchNotes("", false, null);
+        if (notes.isEmpty()) {
+            Toast.makeText(this, R.string.backup_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/octet-stream");
+        intent.putExtra(Intent.EXTRA_TITLE, "Notara_Backup.nrb");
+        exportLauncher.launch(intent);
+    }
+
+    private String readUriContent(Uri uri) throws IOException {
+        Exception lastEx = null;
+        if (!"content".equals(uri.getScheme())) {
+            try (InputStream is = new FileInputStream(uri.getPath())) {
+                return safeRead(is);
+            } catch (Exception e) { lastEx = e; }
+        }
+        try (InputStream is = getContentResolver().openInputStream(uri)) {
+            if (is != null) return safeRead(is);
+        } catch (Exception e) {
+            lastEx = e;
+        }
+        String path = extractPathFromUri(uri);
+        if (path != null) {
+            try (InputStream is = new FileInputStream(path)) {
+                return safeRead(is);
+            } catch (Exception ignored) {}
+        }
+        if (lastEx != null) throw new IOException(lastEx);
+        throw new IOException("Não foi possível ler o arquivo");
+    }
+
+    private String safeRead(InputStream is) throws IOException {
+        try {
+            return BackupManager.read(is);
+        } catch (IOException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IOException(e);
+        }
+    }
+
+    private String extractPathFromUri(Uri uri) {
+        String docId = null;
+        if ("com.android.externalstorage.documents".equals(uri.getAuthority())) {
+            try {
+                docId = DocumentsContract.getDocumentId(uri);
+            } catch (Exception ignored) {}
+        }
+        if (docId == null) {
+            String path = uri.getPath();
+            if (path != null) {
+                int idx = path.lastIndexOf("document/");
+                if (idx >= 0) docId = path.substring(idx + "document/".length());
+            }
+        }
+        if (docId == null) return null;
+        docId = Uri.decode(docId);
+        String[] parts = docId.split(":");
+        String storage;
+        if (parts.length >= 2) {
+            if ("primary".equalsIgnoreCase(parts[0])) {
+                storage = Environment.getExternalStorageDirectory().getAbsolutePath();
+            } else {
+                storage = "/storage/" + parts[0];
+            }
+            return storage + "/" + parts[1];
+        }
+        return parts[0];
+    }
+
+    private void handleBackupIntent(Intent intent) {
+        if (intent == null) return;
+        String action = intent.getAction();
+        if (!Intent.ACTION_VIEW.equals(action) && !Intent.ACTION_SEND.equals(action)) return;
+        Uri uri = intent.getData();
+        if (uri == null && Intent.ACTION_SEND.equals(action)) {
+            uri = intent.getParcelableExtra(Intent.EXTRA_STREAM, android.net.Uri.class);
+        }
+        if (uri == null) return;
+        String data;
+        try {
+            data = readUriContent(uri);
+        } catch (Exception e) {
+            Toast.makeText(this, getString(R.string.backup_read_error) + ": " + e.getMessage(), Toast.LENGTH_LONG).show();
+            return;
+        }
+        boolean encrypted = BackupManager.isEncrypted(data);
+        if (encrypted) {
+            promptPasswordForRestore(data);
+        } else {
+            doRestore(data, null);
+        }
+    }
+
+    private void promptPasswordForRestore(String data) {
+        EditText input = new EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        input.setHint(R.string.backup_password_hint);
+        int padding = (int) (16 * getResources().getDisplayMetrics().density);
+        input.setPadding(padding, padding, padding, padding);
+
+        new MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.backup_encrypted)
+            .setView(input)
+            .setPositiveButton("OK", (d, w) -> {
+                String pwd = input.getText().toString();
+                if (pwd.isEmpty()) {
+                    Toast.makeText(this, "A senha não pode estar vazia", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                doRestore(data, pwd);
+            })
+            .setNegativeButton("Cancelar", null)
+            .show();
+    }
+
+    private void doRestore(String data, String password) {
+        try {
+            if (password != null) data = BackupManager.decrypt(data, password);
+        } catch (Exception e) {
+            Toast.makeText(this, R.string.backup_wrong_password, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        List<DatabaseHelper.Note> notes;
+        try {
+            notes = BackupManager.deserialize(data);
+        } catch (Exception e) {
+            Toast.makeText(this, R.string.backup_invalid, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        int count = 0;
+        for (DatabaseHelper.Note note : notes) {
+            note.id = -1;
+            viewModel.addNote(note);
+            count++;
+        }
+        Toast.makeText(this, getString(R.string.backup_restored, count), Toast.LENGTH_SHORT).show();
+    }
+
+    private void promptPassword(java.util.function.Consumer<String> callback) {
+        EditText input = new EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        input.setHint(R.string.backup_password_hint);
+        int padding = (int) (16 * getResources().getDisplayMetrics().density);
+        input.setPadding(padding, padding, padding, padding);
+
+        EditText confirmInput = new EditText(this);
+        confirmInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        confirmInput.setHint(R.string.backup_password_confirm);
+        confirmInput.setPadding(padding, padding, padding, padding);
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.addView(input);
+        layout.addView(confirmInput);
+
+        new MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.backup_encrypted)
+            .setView(layout)
+            .setPositiveButton("OK", (d, w) -> {
+                String pwd = input.getText().toString();
+                String confirm = confirmInput.getText().toString();
+                if (!pwd.equals(confirm)) {
+                    Toast.makeText(this, R.string.backup_password_mismatch, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (pwd.isEmpty()) {
+                    Toast.makeText(this, "A senha não pode estar vazia", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                callback.accept(pwd);
+            })
+            .setNegativeButton("Cancelar", null)
+            .show();
     }
 
     private void setupPlanningSettings() {

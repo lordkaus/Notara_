@@ -66,6 +66,7 @@ public class EditActivity extends AppCompatActivity {
     private int recurrenceType = 0;
     private int alertType = 0;
     private SecurityManager securityManager;
+    private boolean saved = false;
 
     public static final String[] noteColors = {
         "#FFEB3B", "#4DB6AC", "#FF9800", "#8BC34A", "#F44336", "#9C27B0", "#2196F3", "#E91E63"
@@ -76,7 +77,6 @@ public class EditActivity extends AppCompatActivity {
 
     private boolean isPreviewMode = false;
     private android.view.GestureDetector gestureDetector;
-    private int barHeight = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -171,13 +171,6 @@ public class EditActivity extends AppCompatActivity {
         updateDate();
         setupListeners();
         setupKeyboardListener();
-        binding.bottomAppBar.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
-            int h = bottom - top;
-            if (h != barHeight && h > 0) {
-                barHeight = h;
-                updateBottomMargin();
-            }
-        });
     }
 
     @Override
@@ -195,33 +188,24 @@ public class EditActivity extends AppCompatActivity {
             int heightDiff = root.getRootView().getHeight() - (r.bottom - r.top);
             int threshold = (int) (200 * getResources().getDisplayMetrics().density);
             if (heightDiff > threshold) {
-                if (barHeight == 0) barHeight = binding.bottomAppBar.getHeight();
-                binding.bottomAppBar.setVisibility(View.GONE);
-                setBottomMargin(0);
+                binding.btnSave.setVisibility(View.GONE);
+                binding.btnConvertFAB.setVisibility(View.GONE);
             } else {
-                binding.bottomAppBar.setVisibility(View.VISIBLE);
-                int h = barHeight;
-                if (h == 0) h = binding.bottomAppBar.getHeight();
-                if (h > 0) setBottomMargin(h);
+                if (!isPreviewMode && isUnlocked) {
+                    binding.btnSave.setVisibility(View.VISIBLE);
+                    binding.btnConvertFAB.setVisibility(View.VISIBLE);
+                }
             }
         });
-    }
-
-    private void setBottomMargin(int margin) {
-        androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams params =
-            (androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams) binding.nestedScrollView.getLayoutParams();
-        if (params.bottomMargin != margin) {
-            params.bottomMargin = margin;
-            binding.nestedScrollView.requestLayout();
-        }
     }
 
     private void lockContent() {
         binding.etTitle.setVisibility(View.GONE);
         binding.tvDate.setVisibility(View.GONE);
         binding.editNoteText.setVisibility(View.GONE);
-        binding.bottomAppBar.setVisibility(View.GONE);
         binding.btnSave.setVisibility(View.GONE);
+        binding.btnConvertFAB.setVisibility(View.GONE);
+        binding.layoutNoteSchedule.setVisibility(View.GONE);
     }
 
     private void unlockContent() {
@@ -251,8 +235,11 @@ public class EditActivity extends AppCompatActivity {
     private void updateUIState() {
         boolean shouldShowControls = !isPreviewMode && isUnlocked;
         
-        binding.bottomAppBar.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
         binding.btnSave.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
+        binding.btnConvertFAB.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
+        binding.layoutNoteSchedule.setVisibility(
+                isUnlocked && (!isPreviewMode || reminderTime > 0)
+                ? View.VISIBLE : View.GONE);
         
         // Ensure text views are visible if unlocked
         if (isUnlocked) {
@@ -270,17 +257,8 @@ public class EditActivity extends AppCompatActivity {
         if (isPreviewMode) {
             hideKeyboard();
         }
-        updateBottomMargin();
-    }
-
-    private void updateBottomMargin() {
-        if (binding.bottomAppBar.getVisibility() == View.VISIBLE) {
-            int h = barHeight;
-            if (h == 0) h = binding.bottomAppBar.getHeight();
-            if (h > 0) setBottomMargin(h);
-        } else {
-            setBottomMargin(0);
-        }
+        updateColorIndicator();
+        updateNoteScheduleIndicators();
     }
 
     private void hideKeyboard() {
@@ -370,10 +348,36 @@ public class EditActivity extends AppCompatActivity {
 
     private void setupListeners() {
         binding.btnSave.setOnClickListener(v -> { saveNote(); finish(); });
-        binding.btnColorPicker.setOnClickListener(v -> showColorPicker());
-        binding.btnConvertToChecklist.setOnClickListener(v -> convertToChecklist());
+        binding.btnConvertFAB.setOnClickListener(v -> convertToChecklist());
         binding.btnReminder.setOnClickListener(v -> showReminderDialog(0));
         binding.btnAlarm.setOnClickListener(v -> showReminderDialog(1));
+        setupFoldClickListener();
+    }
+
+    private void setupFoldClickListener() {
+        binding.vFoldClick.setOnClickListener(v -> showColorPicker());
+    }
+
+    private void updateNoteScheduleIndicators() {
+        int noteColor = Color.parseColor(noteColors[selectedColor % noteColors.length]);
+        boolean hasReminder = reminderTime > 0;
+
+        if (hasReminder && (alertType == 0 || alertType == 2)) {
+            binding.btnReminder.setColorFilter(noteColor);
+            binding.btnReminder.setAlpha(1f);
+        } else {
+            binding.btnReminder.setColorFilter(
+                    androidx.core.graphics.ColorUtils.setAlphaComponent(noteColor, 60));
+            binding.btnReminder.setAlpha(0.5f);
+        }
+        if (hasReminder && (alertType == 1 || alertType == 2)) {
+            binding.btnAlarm.setColorFilter(noteColor);
+            binding.btnAlarm.setAlpha(1f);
+        } else {
+            binding.btnAlarm.setColorFilter(
+                    androidx.core.graphics.ColorUtils.setAlphaComponent(noteColor, 60));
+            binding.btnAlarm.setAlpha(0.5f);
+        }
     }
 
     private void showColorPicker() {
@@ -428,17 +432,26 @@ public class EditActivity extends AppCompatActivity {
         int color = Color.parseColor(noteColors[selectedColor % noteColors.length]);
         binding.topColorIndicator.setVisibility(View.GONE);
         binding.btnSave.setBackgroundTintList(android.content.res.ColorStateList.valueOf(color));
+        binding.btnConvertFAB.setBackgroundTintList(android.content.res.ColorStateList.valueOf(color));
+        int fabIconColor = isColorDark(color) ? Color.WHITE : 0xFF1C1B1F;
+        binding.btnSave.setImageTintList(android.content.res.ColorStateList.valueOf(fabIconColor));
+        binding.btnConvertFAB.setImageTintList(android.content.res.ColorStateList.valueOf(fabIconColor));
 
         int currentTheme = settings.getTheme();
         boolean isDarkTheme = (currentTheme == 1);
 
-        android.graphics.drawable.GradientDrawable border = new android.graphics.drawable.GradientDrawable();
+        float density = getResources().getDisplayMetrics().density;
         int tintAlpha = (int) (255 * 0.3f);
         int tintColor = Color.argb(tintAlpha, Color.red(color), Color.green(color), Color.blue(color));
-        border.setColor(tintColor);
-        border.setStroke((int) (3 * getResources().getDisplayMetrics().density), color);
-        border.setCornerRadius(12 * getResources().getDisplayMetrics().density);
-        binding.nestedScrollView.setBackground(border);
+        float foldPx = (isPreviewMode ? 20 : 44) * density;
+        BorderWithCornerFold borderDrawable = new BorderWithCornerFold(
+                12 * density, 3 * density, foldPx, tintColor, color);
+        borderDrawable.setFoldOutlineVisible(!isPreviewMode);
+        binding.nestedScrollView.setBackground(borderDrawable);
+        android.view.ViewGroup.LayoutParams lp = binding.vFoldClick.getLayoutParams();
+        lp.width = (int) foldPx;
+        lp.height = (int) foldPx;
+        binding.vFoldClick.setLayoutParams(lp);
 
         binding.getRoot().setBackground(null);
         int textColor = isDarkTheme ? Color.WHITE : getThemeColor(android.R.attr.textColorPrimary);
@@ -447,11 +460,11 @@ public class EditActivity extends AppCompatActivity {
         binding.editNoteText.setTextColor(subColor);
         binding.editNoteText.setLineColor(color);
 
-        android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
-        shape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-        shape.setColor(color);
-        shape.setStroke(4, Color.WHITE);
-        binding.viewSelectedColor.setBackground(shape);
+    }
+
+    private boolean isColorDark(int color) {
+        double luminance = (0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)) / 255;
+        return luminance <= 0.5;
     }
 
     private void showReminderDialog(int type) {
@@ -625,6 +638,7 @@ public class EditActivity extends AppCompatActivity {
                 finalContent = SecurityCore.encrypt(content);
             } catch (Exception e) {
                 Toast.makeText(this, "Erro ao criptografar: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                return;
             }
         }
 
@@ -635,7 +649,7 @@ public class EditActivity extends AppCompatActivity {
             currentNote.title = title; currentNote.content = finalContent; currentNote.color = selectedColor;
             currentNote.reminderTime = reminderTime; currentNote.originalReminderTime = originalReminderTime;
             currentNote.recurrenceType = recurrenceType; currentNote.recurrenceDays = recurrenceDays;
-            currentNote.alertType = alertType;
+            currentNote.alertType = alertType; currentNote.type = 0;
             viewModel.updateNote(currentNote);
         }
 
@@ -643,8 +657,13 @@ public class EditActivity extends AppCompatActivity {
             AlarmReceiver.rescheduleAlarm(this, currentNote);
         } else if (reminderTime == 0 && noteId != -1) {
             AlarmReceiver.cancelAlarm(this, noteId);
+        } else if (reminderTime > 0) {
+            if (noteId != -1) AlarmReceiver.cancelAlarm(this, noteId);
         }
+
+        saved = true;
+        Toast.makeText(this, "Nota salva", Toast.LENGTH_SHORT).show();
     }
 
-    @Override protected void onPause() { super.onPause(); saveNote(); }
+    @Override protected void onPause() { super.onPause(); if (!saved) saveNote(); }
 }

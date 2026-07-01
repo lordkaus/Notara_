@@ -167,9 +167,7 @@ public class ChecklistActivity extends AppCompatActivity {
 
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
-        if (isPreviewMode && gestureDetector.onTouchEvent(ev)) {
-            return true;
-        }
+        gestureDetector.onTouchEvent(ev);
         return super.dispatchTouchEvent(ev);
     }
 
@@ -197,6 +195,7 @@ public class ChecklistActivity extends AppCompatActivity {
         binding.rvChecklist.setVisibility(View.GONE);
         binding.tilNewItem.setVisibility(View.GONE);
         binding.layoutNoteSchedule.setVisibility(View.GONE);
+        binding.tvScheduleInfo.setVisibility(View.GONE);
         binding.btnConvertFAB.setVisibility(View.GONE);
         binding.btnSaveChecklist.setVisibility(View.GONE);
     }
@@ -225,9 +224,9 @@ public class ChecklistActivity extends AppCompatActivity {
         binding.btnSaveChecklist.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
         binding.btnConvertFAB.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
         binding.tilNewItem.setVisibility(shouldShowControls ? View.VISIBLE : View.GONE);
-        binding.layoutNoteSchedule.setVisibility(
-                isUnlocked && (!isPreviewMode || (currentNote != null && currentNote.reminderTime > 0))
-                ? View.VISIBLE : View.GONE);
+        boolean scheduleVisible = isUnlocked && (!isPreviewMode || (currentNote != null && (currentNote.reminderTime > 0 || currentNote.alarmTime > 0)));
+        binding.layoutNoteSchedule.setVisibility(scheduleVisible ? View.VISIBLE : View.GONE);
+        if (!scheduleVisible) binding.tvScheduleInfo.setVisibility(View.GONE);
         
         if (isUnlocked) {
             binding.rvChecklist.setVisibility(View.VISIBLE);
@@ -245,6 +244,13 @@ public class ChecklistActivity extends AppCompatActivity {
 
         updateColorIndicator();
         updateNoteScheduleIndicators();
+        View rvParent = (View) binding.rvChecklist.getParent();
+        ViewGroup.MarginLayoutParams rvParams = (ViewGroup.MarginLayoutParams) rvParent.getLayoutParams();
+        rvParams.topMargin = isPreviewMode ? 0 : (int) (4 * getResources().getDisplayMetrics().density + 0.5f);
+        if (!isPreviewMode) {
+            rvParent.setPadding(0, 0, 0, 0);
+        }
+        rvParent.requestLayout();
         if (adapter != null) adapter.notifyDataSetChanged();
     }
 
@@ -312,6 +318,57 @@ public class ChecklistActivity extends AppCompatActivity {
         SimpleDateFormat sdf = new SimpleDateFormat(pattern + " 'às' " + timeFormat, Locale.getDefault());
         binding.tvChecklistDate.setText(getString(R.string.edited_at, sdf.format(modified.getTime())));
         binding.tvChecklistDate.setTextColor(Color.GRAY);
+        updateScheduleInfo(now);
+    }
+
+    private void updateScheduleInfo(Calendar now) {
+        if (currentNote == null) return;
+        StringBuilder sb = new StringBuilder();
+        if (currentNote.reminderTime > 0) {
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeInMillis(currentNote.reminderTime);
+            sb.append("🔔 Lembrete");
+            String[] recurrences = {"", " (Diário)", " (Semanal)", " (Mensal)", " (Anual)", " (Pers.)"};
+            if (currentNote.recurrenceType > 0 && currentNote.recurrenceType < recurrences.length) {
+                sb.append(recurrences[currentNote.recurrenceType]);
+            }
+            sb.append(": ");
+            appendFormattedTime(sb, cal, now);
+        }
+        if (currentNote.alarmTime > 0) {
+            if (sb.length() > 0) sb.append("\n");
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeInMillis(currentNote.alarmTime);
+            sb.append("⏰ Alarme");
+            String[] recurrences = {"", " (Diário)", " (Semanal)", " (Mensal)", " (Anual)", " (Pers.)"};
+            if (currentNote.alarmRecurrenceType > 0 && currentNote.alarmRecurrenceType < recurrences.length) {
+                sb.append(recurrences[currentNote.alarmRecurrenceType]);
+            }
+            sb.append(": ");
+            appendFormattedTime(sb, cal, now);
+        }
+        if (sb.length() > 0) {
+            binding.tvScheduleInfo.setText(sb.toString());
+            binding.tvScheduleInfo.setTextColor(Color.parseColor("#4DB6AC"));
+            binding.tvScheduleInfo.setVisibility(View.VISIBLE);
+            binding.tvScheduleInfo.post(() -> adjustRecyclerPadding());
+        } else {
+            binding.tvScheduleInfo.setVisibility(View.GONE);
+            ((View) binding.rvChecklist.getParent()).setPadding(0, 0, 0, 0);
+        }
+    }
+
+    private void adjustRecyclerPadding() {
+        if (binding.tvScheduleInfo.getVisibility() != View.VISIBLE) return;
+        int[] tvLoc = new int[2];
+        int[] frameLoc = new int[2];
+        binding.tvScheduleInfo.getLocationInWindow(tvLoc);
+        ((View) binding.rvChecklist.getParent()).getLocationInWindow(frameLoc);
+        int tvBottom = tvLoc[1] + binding.tvScheduleInfo.getHeight();
+        int padding = tvBottom - frameLoc[1] + (int) (8 * getResources().getDisplayMetrics().density + 0.5f);
+        if (padding > 0) {
+            ((View) binding.rvChecklist.getParent()).setPadding(0, padding, 0, 0);
+        }
     }
 
     private void setupRecyclerView() {
@@ -378,8 +435,8 @@ public class ChecklistActivity extends AppCompatActivity {
         });
         binding.btnSaveChecklist.setOnClickListener(v -> { save(); finish(); });
         setupFoldClickListener();
-        binding.btnChecklistReminder.setOnClickListener(v -> showNoteScheduleDialog());
-        binding.btnChecklistAlarm.setOnClickListener(v -> showNoteScheduleDialog());
+        binding.btnChecklistReminder.setOnClickListener(v -> showNoteReminderDialog());
+        binding.btnChecklistAlarm.setOnClickListener(v -> showNoteAlarmDialog());
         binding.btnConvertFAB.setOnClickListener(v -> convertToText());
     }
 
@@ -671,7 +728,7 @@ public class ChecklistActivity extends AppCompatActivity {
         }
 
         if (currentNote == null) {
-            currentNote = new DatabaseHelper.Note(-1, title, finalContent, 1, selectedColor, 0, 0, null, 0, 0, 0, null, 0, 0, System.currentTimeMillis(), 0);
+            currentNote = new DatabaseHelper.Note(-1, title, finalContent, 1, selectedColor, 0, 0, null, 0, 0, 0, null, 0, 0, System.currentTimeMillis(), 0, 0, 0, 0, 0);
             noteId = (int) viewModel.addNote(currentNote); currentNote.id = noteId;
         } else {
             currentNote.title = title; currentNote.content = finalContent; currentNote.color = selectedColor;
@@ -708,6 +765,12 @@ public class ChecklistActivity extends AppCompatActivity {
             AlarmReceiver.cancelAlarm(this, noteId);
         }
 
+        if (currentNote.alarmTime > System.currentTimeMillis()) {
+            AlarmReceiver.scheduleNoteAlarm(this, currentNote);
+        } else if (currentNote.alarmTime > 0) {
+            AlarmReceiver.cancelNoteAlarm(this, noteId);
+        }
+
         saved = true;
         Toast.makeText(this, "Lista salva", Toast.LENGTH_SHORT).show();
     }
@@ -728,85 +791,89 @@ public class ChecklistActivity extends AppCompatActivity {
 
     private void updateNoteScheduleIndicators() {
         int noteColor = Color.parseColor(EditActivity.noteColors[selectedColor % EditActivity.noteColors.length]);
-        boolean hasReminder = currentNote != null && currentNote.reminderTime > 0;
-        int alert = currentNote != null ? currentNote.alertType : 0;
+        boolean reminderActive = currentNote != null && currentNote.reminderTime > 0;
+        boolean alarmActive = currentNote != null && currentNote.alarmTime > 0;
 
-        if (hasReminder && (alert == 0 || alert == 2)) {
+        if (isPreviewMode) {
+            binding.btnChecklistReminder.setVisibility(reminderActive ? View.VISIBLE : View.GONE);
+            binding.btnChecklistAlarm.setVisibility(alarmActive ? View.VISIBLE : View.GONE);
+        } else {
+            binding.btnChecklistReminder.setVisibility(View.VISIBLE);
+            binding.btnChecklistAlarm.setVisibility(View.VISIBLE);
+        }
+
+        binding.btnChecklistReminder.setImageResource(reminderActive ? R.drawable.ic_notifications_filled : R.drawable.ic_notifications);
+        if (reminderActive) {
             binding.btnChecklistReminder.setColorFilter(noteColor);
             binding.btnChecklistReminder.setAlpha(1f);
-        } else {
+        } else if (!isPreviewMode) {
             binding.btnChecklistReminder.setColorFilter(
                     androidx.core.graphics.ColorUtils.setAlphaComponent(noteColor, 60));
             binding.btnChecklistReminder.setAlpha(0.5f);
         }
-        if (hasReminder && (alert == 1 || alert == 2)) {
+
+        binding.btnChecklistAlarm.setImageResource(alarmActive ? R.drawable.ic_alarm_filled : R.drawable.ic_alarm);
+        if (alarmActive) {
             binding.btnChecklistAlarm.setColorFilter(noteColor);
             binding.btnChecklistAlarm.setAlpha(1f);
-        } else {
+        } else if (!isPreviewMode) {
             binding.btnChecklistAlarm.setColorFilter(
                     androidx.core.graphics.ColorUtils.setAlphaComponent(noteColor, 60));
             binding.btnChecklistAlarm.setAlpha(0.5f);
         }
+
+        updateScheduleInfo(Calendar.getInstance());
     }
 
-    private void showNoteScheduleDialog() {
+    private String getPeriodText(int hour) {
+        if (hour >= 6 && hour < 12) return getString(R.string.period_morning);
+        if (hour >= 12 && hour < 18) return getString(R.string.period_afternoon);
+        if (hour >= 18) return getString(R.string.period_night);
+        return getString(R.string.period_dawn);
+    }
+
+    private void appendFormattedTime(StringBuilder sb, Calendar cal, Calendar now) {
+        String pattern = (cal.get(Calendar.YEAR) == now.get(Calendar.YEAR)) ? "dd/MM" : "dd/MM/yyyy";
+        SimpleDateFormat dateSdf = new SimpleDateFormat(pattern, Locale.getDefault());
+        if (settings.is24HourFormat()) {
+            SimpleDateFormat timeSdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
+            sb.append(dateSdf.format(cal.getTime()));
+            sb.append(" às ");
+            sb.append(timeSdf.format(cal.getTime()));
+        } else {
+            int h12 = cal.get(Calendar.HOUR_OF_DAY) % 12;
+            if (h12 == 0) h12 = 12;
+            sb.append(dateSdf.format(cal.getTime()));
+            sb.append(" às ");
+            sb.append(String.format(Locale.getDefault(), "%d:%02d", h12, cal.get(Calendar.MINUTE)));
+            sb.append(" ");
+            sb.append(getPeriodText(cal.get(Calendar.HOUR_OF_DAY)));
+        }
+    }
+
+    private void showNoteReminderDialog() {
         if (currentNote == null) return;
-        class Option {
-            final int icon1, icon2; final String text; final int type;
-            Option(int i1, int i2, String t, int ty) { icon1=i1; icon2=i2; text=t; type=ty; }
+        if (!PermissionUtils.hasNotificationPermission(this)) {
+            new MaterialAlertDialogBuilder(this).setTitle("Permissão Necessária").setMessage("Ative as notificações para receber lembretes.").setPositiveButton("Configurações", (d, w) -> PermissionUtils.openNotificationSettings(this)).setNegativeButton("Agora não", null).show();
+            return;
         }
-        java.util.List<Option> opts = new java.util.ArrayList<>();
-        opts.add(new Option(R.drawable.ic_notifications, 0, "Lembrete", 0));
-        opts.add(new Option(R.drawable.ic_alarm, 0, "Alarme", 1));
-        opts.add(new Option(R.drawable.ic_notifications, R.drawable.ic_alarm, "Ambos", 2));
-        if (currentNote.reminderTime > 0) {
-            opts.add(new Option(R.drawable.ic_close, 0, "Remover Agendamento", -1));
-        }
-        android.widget.ListView lv = new android.widget.ListView(this);
-        lv.setAdapter(new android.widget.BaseAdapter() {
-            @Override public int getCount() { return opts.size(); }
-            @Override public Object getItem(int p) { return opts.get(p); }
-            @Override public long getItemId(int p) { return p; }
-            @Override public View getView(int p, View convert, ViewGroup parent) {
-                if (convert == null) convert = getLayoutInflater().inflate(R.layout.item_schedule_option, parent, false);
-                Option o = opts.get(p);
-                android.widget.ImageView iv1 = (android.widget.ImageView) convert.findViewById(R.id.ivIcon1);
-                android.widget.ImageView iv2 = (android.widget.ImageView) convert.findViewById(R.id.ivIcon2);
-                iv1.setImageResource(o.icon1);
-                iv1.setColorFilter(androidx.core.graphics.ColorUtils.setAlphaComponent(
-                        Color.parseColor(EditActivity.noteColors[selectedColor % EditActivity.noteColors.length]), 200));
-                if (o.icon2 != 0) {
-                    iv2.setVisibility(View.VISIBLE);
-                    iv2.setImageResource(o.icon2);
-                    iv2.setColorFilter(androidx.core.graphics.ColorUtils.setAlphaComponent(
-                            Color.parseColor(EditActivity.noteColors[selectedColor % EditActivity.noteColors.length]), 200));
-                } else { iv2.setVisibility(View.GONE); }
-                ((android.widget.TextView) convert.findViewById(R.id.tvText)).setText(o.text);
-                return convert;
-            }
-        });
-        new MaterialAlertDialogBuilder(this)
-            .setTitle("Notificação da Lista")
-            .setView(lv)
-            .setPositiveButton("Cancelar", null)
-            .show();
-        lv.setOnItemClickListener((p, v, pos, id) -> {
-            Option o = opts.get(pos);
-            if (o.type < 0) {
-                currentNote.reminderTime = 0; currentNote.originalReminderTime = 0;
-                currentNote.recurrenceType = 0; currentNote.recurrenceDays = 0;
-                currentNote.alertType = 0;
-                updateNoteScheduleIndicators();
-            } else {
-                pickNoteDateTime(o.type);
-            }
-        });
+        pickNoteDateTime(false);
     }
 
-    private void pickNoteDateTime(int type) {
+    private void showNoteAlarmDialog() {
+        if (currentNote == null) return;
+        if (!PermissionUtils.hasNotificationPermission(this)) {
+            new MaterialAlertDialogBuilder(this).setTitle("Permissão Necessária").setMessage("Ative as notificações para receber alarmes.").setPositiveButton("Configurações", (d, w) -> PermissionUtils.openNotificationSettings(this)).setNegativeButton("Agora não", null).show();
+            return;
+        }
+        pickNoteDateTime(true);
+    }
+
+    private void pickNoteDateTime(boolean isAlarm) {
+        long existingTime = isAlarm ? currentNote.alarmTime : currentNote.reminderTime;
         com.google.android.material.datepicker.MaterialDatePicker<Long> dp = com.google.android.material.datepicker.MaterialDatePicker.Builder.datePicker()
                 .setTitleText("1. Escolha a Data")
-                .setSelection(currentNote.reminderTime > 0 ? currentNote.reminderTime : com.google.android.material.datepicker.MaterialDatePicker.todayInUtcMilliseconds())
+                .setSelection(existingTime > 0 ? existingTime : com.google.android.material.datepicker.MaterialDatePicker.todayInUtcMilliseconds())
                 .build();
         dp.addOnPositiveButtonClickListener(selection -> {
             Calendar cal = Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"));
@@ -815,8 +882,8 @@ public class ChecklistActivity extends AppCompatActivity {
             Calendar localCal = Calendar.getInstance();
             localCal.set(year, month, day);
             int initH = 9, initM = 0;
-            if (currentNote.reminderTime > 0) {
-                Calendar c = Calendar.getInstance(); c.setTimeInMillis(currentNote.reminderTime);
+            if (existingTime > 0) {
+                Calendar c = Calendar.getInstance(); c.setTimeInMillis(existingTime);
                 initH = c.get(Calendar.HOUR_OF_DAY); initM = c.get(Calendar.MINUTE);
             }
             com.google.android.material.timepicker.MaterialTimePicker tp = new com.google.android.material.timepicker.MaterialTimePicker.Builder()
@@ -826,14 +893,14 @@ public class ChecklistActivity extends AppCompatActivity {
                 localCal.set(Calendar.HOUR_OF_DAY, tp.getHour());
                 localCal.set(Calendar.MINUTE, tp.getMinute());
                 localCal.set(Calendar.SECOND, 0);
-                showNoteRecurrenceStep(localCal, type);
+                showNoteRecurrenceStep(localCal, isAlarm);
             });
             tp.show(getSupportFragmentManager(), "NOTE_TIME");
         });
         dp.show(getSupportFragmentManager(), "NOTE_DATE");
     }
 
-    private void showNoteRecurrenceStep(Calendar cal, int type) {
+    private void showNoteRecurrenceStep(Calendar cal, boolean isAlarm) {
         View v = getLayoutInflater().inflate(R.layout.dialog_step_recurrence, null);
         com.google.android.material.switchmaterial.SwitchMaterial sw = v.findViewById(R.id.switchRecurrenceToggle);
         View options = v.findViewById(R.id.layoutRecurrenceOptions);
@@ -847,12 +914,16 @@ public class ChecklistActivity extends AppCompatActivity {
             v.findViewById(R.id.chipDom), v.findViewById(R.id.chipSeg), v.findViewById(R.id.chipTer),
             v.findViewById(R.id.chipQua), v.findViewById(R.id.chipQui), v.findViewById(R.id.chipSex), v.findViewById(R.id.chipSab)
         };
-        if (currentNote.recurrenceType > 0) {
+
+        int existingRecurrenceType = isAlarm ? currentNote.alarmRecurrenceType : currentNote.recurrenceType;
+        int existingRecurrenceDays = isAlarm ? currentNote.alarmRecurrenceDays : currentNote.recurrenceDays;
+
+        if (existingRecurrenceType > 0) {
             sw.setChecked(true); options.setVisibility(View.VISIBLE);
-            dropdown.setText(freqs[Math.min(currentNote.recurrenceType - 1, 4)], false);
-            if (currentNote.recurrenceType == 5) {
+            dropdown.setText(freqs[Math.min(existingRecurrenceType - 1, 4)], false);
+            if (existingRecurrenceType == 5) {
                 customLayout.setVisibility(View.VISIBLE);
-                for (int i = 0; i < 7; i++) if ((currentNote.recurrenceDays & (1 << i)) != 0) chips[i].setChecked(true);
+                for (int i = 0; i < 7; i++) if ((existingRecurrenceDays & (1 << i)) != 0) chips[i].setChecked(true);
             }
         }
         sw.setOnCheckedChangeListener((bv, checked) -> {
@@ -863,27 +934,48 @@ public class ChecklistActivity extends AppCompatActivity {
         new MaterialAlertDialogBuilder(this)
             .setView(v)
             .setPositiveButton("Definir", (d, w) -> {
-                currentNote.reminderTime = cal.getTimeInMillis();
-                currentNote.originalReminderTime = currentNote.reminderTime;
-                if (sw.isChecked()) {
-                    String sel = dropdown.getText().toString();
-                    if (sel.equals(freqs[0])) currentNote.recurrenceType = 1;
-                    else if (sel.equals(freqs[1])) currentNote.recurrenceType = 2;
-                    else if (sel.equals(freqs[2])) currentNote.recurrenceType = 3;
-                    else if (sel.equals(freqs[3])) currentNote.recurrenceType = 4;
-                    else if (sel.equals(freqs[4])) {
-                        currentNote.recurrenceType = 5; currentNote.recurrenceDays = 0;
-                        for (int i = 0; i < 7; i++) if (chips[i].isChecked()) currentNote.recurrenceDays |= (1 << i);
-                        if (currentNote.recurrenceDays == 0) currentNote.recurrenceType = 1;
-                    }
-                } else { currentNote.recurrenceType = 0; currentNote.recurrenceDays = 0; }
-                currentNote.alertType = type;
+                long time = cal.getTimeInMillis();
+                if (isAlarm) {
+                    currentNote.alarmTime = time;
+                    currentNote.alarmOriginalReminderTime = time;
+                    if (sw.isChecked()) {
+                        String sel = dropdown.getText().toString();
+                        if (sel.equals(freqs[0])) currentNote.alarmRecurrenceType = 1;
+                        else if (sel.equals(freqs[1])) currentNote.alarmRecurrenceType = 2;
+                        else if (sel.equals(freqs[2])) currentNote.alarmRecurrenceType = 3;
+                        else if (sel.equals(freqs[3])) currentNote.alarmRecurrenceType = 4;
+                        else if (sel.equals(freqs[4])) {
+                            currentNote.alarmRecurrenceType = 5; currentNote.alarmRecurrenceDays = 0;
+                            for (int i = 0; i < 7; i++) if (chips[i].isChecked()) currentNote.alarmRecurrenceDays |= (1 << i);
+                            if (currentNote.alarmRecurrenceDays == 0) currentNote.alarmRecurrenceType = 1;
+                        }
+                    } else { currentNote.alarmRecurrenceType = 0; currentNote.alarmRecurrenceDays = 0; }
+                } else {
+                    currentNote.reminderTime = time;
+                    currentNote.originalReminderTime = time;
+                    if (sw.isChecked()) {
+                        String sel = dropdown.getText().toString();
+                        if (sel.equals(freqs[0])) currentNote.recurrenceType = 1;
+                        else if (sel.equals(freqs[1])) currentNote.recurrenceType = 2;
+                        else if (sel.equals(freqs[2])) currentNote.recurrenceType = 3;
+                        else if (sel.equals(freqs[3])) currentNote.recurrenceType = 4;
+                        else if (sel.equals(freqs[4])) {
+                            currentNote.recurrenceType = 5; currentNote.recurrenceDays = 0;
+                            for (int i = 0; i < 7; i++) if (chips[i].isChecked()) currentNote.recurrenceDays |= (1 << i);
+                            if (currentNote.recurrenceDays == 0) currentNote.recurrenceType = 1;
+                        }
+                    } else { currentNote.recurrenceType = 0; currentNote.recurrenceDays = 0; }
+                }
                 updateNoteScheduleIndicators();
             })
             .setNeutralButton("Remover", (d, w) -> {
-                currentNote.reminderTime = 0; currentNote.originalReminderTime = 0;
-                currentNote.recurrenceType = 0; currentNote.recurrenceDays = 0;
-                currentNote.alertType = 0;
+                if (isAlarm) {
+                    currentNote.alarmTime = 0; currentNote.alarmOriginalReminderTime = 0;
+                    currentNote.alarmRecurrenceType = 0; currentNote.alarmRecurrenceDays = 0;
+                } else {
+                    currentNote.reminderTime = 0; currentNote.originalReminderTime = 0;
+                    currentNote.recurrenceType = 0; currentNote.recurrenceDays = 0;
+                }
                 updateNoteScheduleIndicators();
             })
             .setNegativeButton("Cancelar", null)
@@ -1115,11 +1207,20 @@ public class ChecklistActivity extends AppCompatActivity {
             java.util.Calendar cal = java.util.Calendar.getInstance();
             cal.setTimeInMillis(timeInMillis);
             java.util.Calendar now = java.util.Calendar.getInstance();
-            String datePattern = (cal.get(java.util.Calendar.YEAR) == now.get(java.util.Calendar.YEAR))
-                    ? "dd/MM" : "dd/MM/yyyy";
-            String timePattern = settings.is24HourFormat() ? "HH:mm" : "hh:mm a";
-            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat(timePattern + " " + datePattern, java.util.Locale.getDefault());
-            return sdf.format(cal.getTime());
+            java.text.SimpleDateFormat dateSdf = new java.text.SimpleDateFormat(
+                (cal.get(java.util.Calendar.YEAR) == now.get(java.util.Calendar.YEAR)) ? "dd/MM" : "dd/MM/yyyy",
+                java.util.Locale.getDefault());
+            String dateStr = dateSdf.format(cal.getTime());
+            if (settings.is24HourFormat()) {
+                java.text.SimpleDateFormat timeSdf = new java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault());
+                return timeSdf.format(cal.getTime()) + " " + dateStr;
+            } else {
+                int h12 = cal.get(java.util.Calendar.HOUR_OF_DAY) % 12;
+                if (h12 == 0) h12 = 12;
+                return String.format(java.util.Locale.getDefault(), "%d:%02d %s %s",
+                    h12, cal.get(java.util.Calendar.MINUTE),
+                    getPeriodText(cal.get(java.util.Calendar.HOUR_OF_DAY)), dateStr);
+            }
         }
 
         private void applyTextWithEffect(VH h, String text, boolean checked) {

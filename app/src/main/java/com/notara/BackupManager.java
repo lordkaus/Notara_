@@ -35,6 +35,10 @@ public class BackupManager {
             obj.put("alertType", n.alertType);
             obj.put("lastModified", n.lastModified);
             obj.put("originalReminderTime", n.originalReminderTime);
+            obj.put("alarmTime", n.alarmTime);
+            obj.put("alarmRecurrenceType", n.alarmRecurrenceType);
+            obj.put("alarmRecurrenceDays", n.alarmRecurrenceDays);
+            obj.put("alarmOriginalReminderTime", n.alarmOriginalReminderTime);
             arr.put(obj);
         }
         return HEADER + "\n" + arr.toString(2);
@@ -65,7 +69,11 @@ public class BackupManager {
                 obj.optInt("isLocked", 0),
                 obj.optInt("alertType", 0),
                 obj.optLong("lastModified", 0),
-                obj.optLong("originalReminderTime", 0)
+                obj.optLong("originalReminderTime", 0),
+                obj.optLong("alarmTime", 0),
+                obj.optInt("alarmRecurrenceType", 0),
+                obj.optInt("alarmRecurrenceDays", 0),
+                obj.optLong("alarmOriginalReminderTime", 0)
             ));
         }
         return notes;

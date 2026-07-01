@@ -6,15 +6,16 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
-    public DatabaseHelper(Context context) { super(context, "notes.db", null, 10); }
+    public DatabaseHelper(Context context) { super(context, "notes.db", null, 12); }
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE notes (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, content TEXT, type INTEGER DEFAULT 0, color INTEGER DEFAULT 0, is_pinned INTEGER DEFAULT 0, is_trashed INTEGER DEFAULT 0, tag TEXT, reminder_time LONG DEFAULT 0, recurrence_type INTEGER DEFAULT 0, recurrence_days INTEGER DEFAULT 0, attachments TEXT, is_locked INTEGER DEFAULT 0, alert_type INTEGER DEFAULT 0, last_modified LONG DEFAULT 0, original_reminder_time LONG DEFAULT 0)");
+        db.execSQL("CREATE TABLE notes (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, content TEXT, type INTEGER DEFAULT 0, color INTEGER DEFAULT 0, is_pinned INTEGER DEFAULT 0, is_trashed INTEGER DEFAULT 0, tag TEXT, reminder_time LONG DEFAULT 0, recurrence_type INTEGER DEFAULT 0, recurrence_days INTEGER DEFAULT 0, attachments TEXT, is_locked INTEGER DEFAULT 0, alert_type INTEGER DEFAULT 0, last_modified LONG DEFAULT 0, original_reminder_time LONG DEFAULT 0, alarm_time LONG DEFAULT 0, alarm_recurrence_type INTEGER DEFAULT 0, alarm_recurrence_days INTEGER DEFAULT 0, alarm_original_time LONG DEFAULT 0)");
         db.execSQL("CREATE TABLE checklist_items (id INTEGER PRIMARY KEY AUTOINCREMENT, note_id INTEGER NOT NULL, name TEXT NOT NULL DEFAULT '', checked INTEGER DEFAULT 0, position INTEGER DEFAULT 0, reminder_time LONG DEFAULT 0, alert_type INTEGER DEFAULT 0, recurrence_type INTEGER DEFAULT 0, recurrence_days INTEGER DEFAULT 0, original_reminder_time LONG DEFAULT 0)");
-    }
+        db.execSQL("CREATE TABLE attachments (id INTEGER PRIMARY KEY AUTOINCREMENT, note_id INTEGER NOT NULL, type INTEGER DEFAULT 0, file_name TEXT, file_path TEXT, mime_type TEXT, file_size LONG DEFAULT 0)");    }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldV, int newV) {
@@ -69,6 +70,22 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 c.close();
             } catch (Exception e) { e.printStackTrace(); }
         }
+        if (oldV < 11) {
+            try { db.execSQL("CREATE TABLE IF NOT EXISTS attachments (id INTEGER PRIMARY KEY AUTOINCREMENT, note_id INTEGER NOT NULL, type INTEGER DEFAULT 0, file_name TEXT, file_path TEXT, mime_type TEXT, file_size LONG DEFAULT 0)"); } catch (Exception e) {}
+        }
+        if (oldV < 12) {
+            try { db.execSQL("ALTER TABLE notes ADD COLUMN alarm_time LONG DEFAULT 0"); } catch (Exception e) {}
+            try { db.execSQL("ALTER TABLE notes ADD COLUMN alarm_recurrence_type INTEGER DEFAULT 0"); } catch (Exception e) {}
+            try { db.execSQL("ALTER TABLE notes ADD COLUMN alarm_recurrence_days INTEGER DEFAULT 0"); } catch (Exception e) {}
+            try { db.execSQL("ALTER TABLE notes ADD COLUMN alarm_original_time LONG DEFAULT 0"); } catch (Exception e) {}
+            try {
+                // Migrate existing data: alert_type=1 (alarm-only) → move reminder_time to alarm_time
+                // alert_type=2 (both) → copy reminder_time to alarm_time
+                db.execSQL("UPDATE notes SET alarm_time = reminder_time, alarm_original_time = original_reminder_time, alarm_recurrence_type = recurrence_type, alarm_recurrence_days = recurrence_days WHERE alert_type = 2");
+                db.execSQL("UPDATE notes SET alarm_time = reminder_time, alarm_original_time = original_reminder_time WHERE alert_type = 1");
+                db.execSQL("UPDATE notes SET reminder_time = 0, original_reminder_time = 0, recurrence_type = 0, recurrence_days = 0 WHERE alert_type = 1");
+            } catch (Exception e) { e.printStackTrace(); }
+        }
     }
 
     public long addNote(Note note) {
@@ -80,6 +97,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         v.put("recurrence_type", note.recurrenceType); v.put("recurrence_days", note.recurrenceDays);
         v.put("attachments", note.attachments); v.put("is_locked", note.isLocked); v.put("alert_type", note.alertType);
         v.put("last_modified", System.currentTimeMillis()); v.put("original_reminder_time", note.originalReminderTime);
+        v.put("alarm_time", note.alarmTime); v.put("alarm_recurrence_type", note.alarmRecurrenceType);
+        v.put("alarm_recurrence_days", note.alarmRecurrenceDays); v.put("alarm_original_time", note.alarmOriginalReminderTime);
         return db.insert("notes", null, v);
     }
 
@@ -92,6 +111,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         v.put("recurrence_type", note.recurrenceType); v.put("recurrence_days", note.recurrenceDays);
         v.put("attachments", note.attachments); v.put("is_locked", note.isLocked); v.put("alert_type", note.alertType);
         v.put("last_modified", System.currentTimeMillis()); v.put("original_reminder_time", note.originalReminderTime);
+        v.put("alarm_time", note.alarmTime); v.put("alarm_recurrence_type", note.alarmRecurrenceType);
+        v.put("alarm_recurrence_days", note.alarmRecurrenceDays); v.put("alarm_original_time", note.alarmOriginalReminderTime);
         db.update("notes", v, "id=?", new String[]{String.valueOf(note.id)});
     }
 
@@ -106,20 +127,56 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             c.getInt(c.getColumnIndexOrThrow("recurrence_days")),
             c.getString(c.getColumnIndexOrThrow("attachments")), c.getInt(c.getColumnIndexOrThrow("is_locked")),
             c.getInt(c.getColumnIndexOrThrow("alert_type")), c.getLong(c.getColumnIndexOrThrow("last_modified")),
-            c.getLong(c.getColumnIndexOrThrow("original_reminder_time"))
+            c.getLong(c.getColumnIndexOrThrow("original_reminder_time")),
+            c.getLong(c.getColumnIndexOrThrow("alarm_time")),
+            c.getInt(c.getColumnIndexOrThrow("alarm_recurrence_type")),
+            c.getInt(c.getColumnIndexOrThrow("alarm_recurrence_days")),
+            c.getLong(c.getColumnIndexOrThrow("alarm_original_time"))
         );
     }
 
     public List<Note> searchNotes(String query, boolean includeTrashed, String filterTag) {
+        return searchNotes(query, includeTrashed, filterTag, null, null);
+    }
+
+    public List<Note> searchNotes(String query, boolean includeTrashed, String filterTag, Set<Integer> filterColors, Set<Integer> filterTypes) {
         List<Note> notes = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
-        StringBuilder sb = new StringBuilder("SELECT * FROM notes WHERE ");
-        sb.append("is_trashed = ").append(includeTrashed ? "1" : "0");
-        if (filterTag != null) sb.append(" AND tag = '").append(filterTag).append("'");
-        if (query != null && !query.isEmpty()) sb.append(" AND (title LIKE '%").append(query).append("%' OR content LIKE '%").append(query).append("%')");
-        sb.append(" ORDER BY is_pinned DESC, id DESC");
-        
-        Cursor c = db.rawQuery(sb.toString(), null);
+        StringBuilder sb = new StringBuilder("SELECT * FROM notes WHERE is_trashed = ?");
+        List<String> args = new ArrayList<>();
+        args.add(includeTrashed ? "1" : "0");
+        if (filterTag != null) { sb.append(" AND tag = ?"); args.add(filterTag); }
+        if (query != null && !query.isEmpty()) {
+            sb.append(" AND (title LIKE ? OR content LIKE ?)");
+            String like = "%" + query + "%";
+            args.add(like);
+            args.add(like);
+        }
+        if (filterColors != null && !filterColors.isEmpty()) {
+            sb.append(" AND color IN (");
+            boolean first = true;
+            for (int c : filterColors) {
+                if (!first) sb.append(",");
+                sb.append("?");
+                args.add(String.valueOf(c));
+                first = false;
+            }
+            sb.append(")");
+        }
+        if (filterTypes != null && !filterTypes.isEmpty()) {
+            sb.append(" AND type IN (");
+            boolean first = true;
+            for (int t : filterTypes) {
+                if (!first) sb.append(",");
+                sb.append("?");
+                args.add(String.valueOf(t));
+                first = false;
+            }
+            sb.append(")");
+        }
+        sb.append(" ORDER BY is_pinned DESC, last_modified DESC");
+
+        Cursor c = db.rawQuery(sb.toString(), args.toArray(new String[0]));
         if (c.moveToFirst()) { do { notes.add(cursorToNote(c)); } while (c.moveToNext()); }
         c.close();
         return notes;
@@ -136,8 +193,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public List<Note> getScheduledNotesUpTo(long endTime) {
         List<Note> notes = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
-        String query = "SELECT * FROM notes WHERE is_trashed = 0 AND reminder_time > 0 AND reminder_time <= ? ORDER BY reminder_time ASC";
-        Cursor c = db.rawQuery(query, new String[]{String.valueOf(endTime)});
+        String query = "SELECT DISTINCT n.* FROM notes n WHERE n.is_trashed = 0 AND ((n.reminder_time > 0 AND n.reminder_time <= ?) OR (n.alarm_time > 0 AND n.alarm_time <= ?))";
+        Cursor c = db.rawQuery(query, new String[]{String.valueOf(endTime), String.valueOf(endTime)});
         if (c.moveToFirst()) { do { notes.add(cursorToNote(c)); } while (c.moveToNext()); }
         c.close();
         return notes;
@@ -146,25 +203,28 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public void deleteNoteForever(int id) {
         SQLiteDatabase db = this.getWritableDatabase();
         db.delete("checklist_items", "note_id=?", new String[]{String.valueOf(id)});
+        db.delete("attachments", "note_id=?", new String[]{String.valueOf(id)});
         db.delete("notes", "id=?", new String[]{String.valueOf(id)});
     }
 
     public void clearTrash() {
         SQLiteDatabase db = this.getWritableDatabase();
         db.execSQL("DELETE FROM checklist_items WHERE note_id IN (SELECT id FROM notes WHERE is_trashed=1)");
+        db.execSQL("DELETE FROM attachments WHERE note_id IN (SELECT id FROM notes WHERE is_trashed=1)");
         db.delete("notes", "is_trashed=1", null);
     }
 
     public void resetAllNotes() {
         SQLiteDatabase db = this.getWritableDatabase();
         db.delete("checklist_items", null, null);
+        db.delete("attachments", null, null);
         db.delete("notes", null, null);
     }
 
     public List<Note> getRecurringNotes() {
         List<Note> notes = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
-        String query = "SELECT * FROM notes WHERE is_trashed = 0 AND recurrence_type > 0 ORDER BY last_modified DESC";
+        String query = "SELECT * FROM notes WHERE is_trashed = 0 AND (recurrence_type > 0 OR alarm_recurrence_type > 0) ORDER BY last_modified DESC";
         Cursor c = db.rawQuery(query, null);
         if (c.moveToFirst()) { do { notes.add(cursorToNote(c)); } while (c.moveToNext()); }
         c.close();
@@ -193,8 +253,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public List<Note> getNotesForDateRange(long start, long end) {
         List<Note> notes = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
-        String query = "SELECT * FROM notes WHERE is_trashed = 0 AND reminder_time >= ? AND reminder_time <= ? ORDER BY reminder_time ASC";
-        Cursor c = db.rawQuery(query, new String[]{String.valueOf(start), String.valueOf(end)});
+        String query = "SELECT DISTINCT n.* FROM notes n WHERE n.is_trashed = 0 AND ((n.reminder_time >= ? AND n.reminder_time <= ?) OR (n.alarm_time >= ? AND n.alarm_time <= ?))";
+        Cursor c = db.rawQuery(query, new String[]{String.valueOf(start), String.valueOf(end), String.valueOf(start), String.valueOf(end)});
         if (c.moveToFirst()) { do { notes.add(cursorToNote(c)); } while (c.moveToNext()); }
         c.close();
         return notes;
@@ -283,22 +343,87 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         public ChecklistItem() {}
     }
 
+    public static class Attachment {
+        public int id = -1;
+        public int noteId;
+        public int type; // 0=image, 1=audio
+        public String fileName;
+        public String filePath;
+        public String mimeType;
+        public long fileSize;
+
+        public Attachment(int id, int noteId, int type, String fileName, String filePath, String mimeType, long fileSize) {
+            this.id = id; this.noteId = noteId; this.type = type;
+            this.fileName = fileName; this.filePath = filePath; this.mimeType = mimeType; this.fileSize = fileSize;
+        }
+
+        public Attachment() {}
+    }
+
+    // --- Attachment CRUD ---
+    public List<Attachment> getAttachments(int noteId) {
+        List<Attachment> list = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query("attachments", null, "note_id=?", new String[]{String.valueOf(noteId)}, null, null, "id ASC");
+        if (c.moveToFirst()) do { list.add(cursorToAttachment(c)); } while (c.moveToNext());
+        c.close();
+        return list;
+    }
+
+    public long insertAttachment(Attachment a) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues v = new ContentValues();
+        v.put("note_id", a.noteId);
+        v.put("type", a.type);
+        v.put("file_name", a.fileName);
+        v.put("file_path", a.filePath);
+        v.put("mime_type", a.mimeType);
+        v.put("file_size", a.fileSize);
+        long id = db.insert("attachments", null, v);
+        if (id != -1) a.id = (int) id;
+        return id;
+    }
+
+    public void deleteAttachment(int id) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.delete("attachments", "id=?", new String[]{String.valueOf(id)});
+    }
+
+    public void deleteAttachmentsByNoteId(int noteId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.delete("attachments", "note_id=?", new String[]{String.valueOf(noteId)});
+    }
+
+    private Attachment cursorToAttachment(Cursor c) {
+        return new Attachment(
+            c.getInt(c.getColumnIndexOrThrow("id")),
+            c.getInt(c.getColumnIndexOrThrow("note_id")),
+            c.getInt(c.getColumnIndexOrThrow("type")),
+            c.getString(c.getColumnIndexOrThrow("file_name")),
+            c.getString(c.getColumnIndexOrThrow("file_path")),
+            c.getString(c.getColumnIndexOrThrow("mime_type")),
+            c.getLong(c.getColumnIndexOrThrow("file_size"))
+        );
+    }
+
     public static class Note {
-        public int id, type, color, isPinned, isTrashed, isLocked, recurrenceType, recurrenceDays, alertType;
+        public int id, type, color, isPinned, isTrashed, isLocked, recurrenceType, recurrenceDays, alertType, alarmRecurrenceType, alarmRecurrenceDays;
         public String title, content, tag, attachments;
-        public long reminderTime, lastModified, originalReminderTime;
+        public long reminderTime, lastModified, originalReminderTime, alarmTime, alarmOriginalReminderTime;
         public boolean isGhost = false;
 
-        public Note(int id, String title, String content, int type, int color, int isPinned, int isTrashed, String tag, long reminderTime, int recurrenceType, int recurrenceDays, String attachments, int isLocked, int alertType, long lastModified, long originalReminderTime) {
+        public Note(int id, String title, String content, int type, int color, int isPinned, int isTrashed, String tag, long reminderTime, int recurrenceType, int recurrenceDays, String attachments, int isLocked, int alertType, long lastModified, long originalReminderTime, long alarmTime, int alarmRecurrenceType, int alarmRecurrenceDays, long alarmOriginalReminderTime) {
             this.id = id; this.title = title; this.content = content; this.type = type; this.color = color;
             this.isPinned = isPinned; this.isTrashed = isTrashed; this.tag = tag; this.reminderTime = reminderTime;
             this.recurrenceType = recurrenceType; this.recurrenceDays = recurrenceDays;
             this.attachments = attachments; this.isLocked = isLocked;
             this.alertType = alertType; this.lastModified = lastModified; this.originalReminderTime = originalReminderTime;
+            this.alarmTime = alarmTime; this.alarmRecurrenceType = alarmRecurrenceType;
+            this.alarmRecurrenceDays = alarmRecurrenceDays; this.alarmOriginalReminderTime = alarmOriginalReminderTime;
         }
 
         public Note asGhost() {
-            Note ghost = new Note(id, title, content, type, color, isPinned, isTrashed, tag, reminderTime, recurrenceType, recurrenceDays, attachments, isLocked, alertType, lastModified, originalReminderTime);
+            Note ghost = new Note(id, title, content, type, color, isPinned, isTrashed, tag, reminderTime, recurrenceType, recurrenceDays, attachments, isLocked, alertType, lastModified, originalReminderTime, alarmTime, alarmRecurrenceType, alarmRecurrenceDays, alarmOriginalReminderTime);
             ghost.isGhost = true;
             return ghost;
         }
@@ -319,6 +444,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         public java.time.LocalDate getLocalDate() {
             long time = originalReminderTime > 0 ? originalReminderTime : reminderTime;
+            if (time <= 0) time = alarmOriginalReminderTime > 0 ? alarmOriginalReminderTime : alarmTime;
+            if (time <= 0) return null;
+            return java.time.Instant.ofEpochMilli(time).atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+        }
+
+        public java.time.LocalDate getAlarmLocalDate() {
+            long time = alarmOriginalReminderTime > 0 ? alarmOriginalReminderTime : alarmTime;
+            if (time <= 0) return null;
             return java.time.Instant.ofEpochMilli(time).atZone(java.time.ZoneId.systemDefault()).toLocalDate();
         }
     }

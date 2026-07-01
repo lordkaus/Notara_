@@ -9,7 +9,7 @@ public class NoteRepositoryImplTest {
     public void testAddNoteDelegatesToDatabaseHelper() {
         DatabaseHelper mockDb = mock(DatabaseHelper.class);
         NoteRepositoryImpl repository = new NoteRepositoryImpl(mockDb);
-        DatabaseHelper.Note note = new DatabaseHelper.Note(1, "Title", "Content", 0, 0, 0, 0, null, 0, 0, 0, null, 0, 0, 0, 0);
+        DatabaseHelper.Note note = new DatabaseHelper.Note(1, "Title", "Content", 0, 0, 0, 0, null, 0, 0, 0, null, 0, 0, 0, 0, 0, 0, 0, 0);
 
         repository.addNote(note);
 

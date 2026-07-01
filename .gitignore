@@ -38,6 +38,7 @@ google-services.json
 .metadata/
 .vscode/
 *.swp
+*kate-swp
 *.patch
 *.diff
 

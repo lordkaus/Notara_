@@ -87,4 +87,9 @@
     <string name="backup_wrong_password">Senha incorreta</string>
     <string name="backup_read_error">Erro ao ler arquivo de backup</string>
     <string name="backup_password_mismatch">Senhas não conferem</string>
+
+    <string name="period_dawn">da madrugada</string>
+    <string name="period_morning">da manhã</string>
+    <string name="period_afternoon">da tarde</string>
+    <string name="period_night">da noite</string>
 </resources>

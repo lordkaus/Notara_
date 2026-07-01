@@ -22,8 +22,12 @@ import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
@@ -36,15 +40,19 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.StaggeredGridLayoutManager;
+import com.google.android.material.chip.Chip;
 import com.notara.databinding.ActivityMainBinding;
 import com.notara.widget.NoteWidgetProvider;
 import com.notara.widget.NoteWidgetProvider2x2;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
     private NoteViewModel viewModel;
     private NoteAdapter adapter;
+    private NoteAdapter searchAdapter;
     private SettingsManager settings;
     private SecurityManager securityManager;
     private SecurityDataStore securityDataStore;
@@ -52,6 +60,9 @@ public class MainActivity extends AppCompatActivity {
     private ActivityResultLauncher<Intent> textExportLauncher;
     private ActivityResultLauncher<Intent> secureExportLauncher;
     private String secureExportPassword;
+    private final Handler searchHandler = new Handler(Looper.getMainLooper());
+    private Runnable searchRunnable;
+    private boolean isSearchActive = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,9 +72,9 @@ public class MainActivity extends AppCompatActivity {
 
         settings.addObserver(() -> runOnUiThread(() -> {
             applyTheme();
-            if (viewModel != null) {
-                viewModel.refreshNotes();
-            }
+        if (viewModel != null) {
+            viewModel.refreshNotes(false);
+        }
         }));
 
         super.onCreate(savedInstanceState);
@@ -134,18 +145,42 @@ public class MainActivity extends AppCompatActivity {
     private void initApp() {
         viewModel = new ViewModelProvider(this).get(NoteViewModel.class);
         setupRecyclerView();
+        setupSearchRecyclerView();
         setupSearch();
+        setupFilters();
         setupFab();
         requestNotificationPermission();
 
         viewModel.getNotes().observe(this, notes -> {
-            if (notes == null || notes.isEmpty()) {
-                binding.emptyState.setVisibility(View.VISIBLE);
-                binding.recyclerView.setVisibility(View.GONE);
-            } else {
+            if (isSearchActive) {
                 binding.emptyState.setVisibility(View.GONE);
-                binding.recyclerView.setVisibility(View.VISIBLE);
-                adapter.setNotes(notes);
+                binding.recyclerView.setVisibility(View.GONE);
+                String q = viewModel.getCurrentQuery();
+                if (q == null || q.isEmpty()) {
+                    binding.searchResults.setVisibility(View.GONE);
+                    binding.searchEmptyText.setVisibility(View.GONE);
+                } else if (notes == null || notes.isEmpty()) {
+                    binding.searchResults.setVisibility(View.GONE);
+                    binding.searchEmptyText.setVisibility(View.VISIBLE);
+                    binding.searchEmptyText.setText("Nenhuma nota encontrada para \"" + q + "\"");
+                } else {
+                    binding.searchResults.setVisibility(View.VISIBLE);
+                    binding.searchEmptyText.setVisibility(View.GONE);
+                    searchAdapter.setNotes(notes);
+                }
+            } else {
+                binding.searchResults.setVisibility(View.GONE);
+                binding.searchEmptyText.setVisibility(View.GONE);
+                if (notes == null || notes.isEmpty()) {
+                    binding.emptyState.setVisibility(View.VISIBLE);
+                    binding.recyclerView.setVisibility(View.GONE);
+                    binding.emptyIcon.setVisibility(View.VISIBLE);
+                    binding.emptyText.setText(R.string.no_notes_found);
+                } else {
+                    binding.emptyState.setVisibility(View.GONE);
+                    binding.recyclerView.setVisibility(View.VISIBLE);
+                    adapter.setNotes(notes);
+                }
             }
         });
     }
@@ -170,6 +205,23 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         binding.recyclerView.setAdapter(adapter);
+    }
+
+    private void setupSearchRecyclerView() {
+        binding.searchResults.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
+
+        searchAdapter = new NoteAdapter(new ArrayList<>(), new NoteAdapter.NoteActionListener() {
+            @Override
+            public void onNoteAction() {
+                viewModel.refreshNotes();
+            }
+
+            @Override
+            public void onNoteLongClick(DatabaseHelper.Note note) {
+                showNoteOptions(note);
+            }
+        });
+        binding.searchResults.setAdapter(searchAdapter);
     }
 
     private void showNoteOptions(DatabaseHelper.Note note) {
@@ -539,7 +591,7 @@ public class MainActivity extends AppCompatActivity {
                 promptForDecryptPassword(finalData.trim());
             } else {
                 // Importação simples .txt
-                DatabaseHelper.Note newNote = new DatabaseHelper.Note(-1, "Nota Importada", finalData, 0, 1, 0, 0, null, 0, 0, 0, null, 0, 0, System.currentTimeMillis(), 0);
+                DatabaseHelper.Note newNote = new DatabaseHelper.Note(-1, "Nota Importada", finalData, 0, 1, 0, 0, null, 0, 0, 0, null, 0, 0, System.currentTimeMillis(), 0, 0, 0, 0, 0);
                 viewModel.addNote(newNote);
                 Toast.makeText(this, "Arquivo .txt importado!", Toast.LENGTH_SHORT).show();
                 viewModel.refreshNotes();
@@ -603,7 +655,7 @@ public class MainActivity extends AppCompatActivity {
                     .setMessage("Deseja importar a nota '" + finalTitle + "' e trancá-la com segurança?")
                     .setPositiveButton("Sim, importar e trancar", (d, w) -> {
                         // isLocked = 1 para trancar
-                        DatabaseHelper.Note newNote = new DatabaseHelper.Note(-1, finalTitle, finalContent, 0, 1, 0, 0, null, 0, 0, 0, null, 1, 0, System.currentTimeMillis(), 0);
+                        DatabaseHelper.Note newNote = new DatabaseHelper.Note(-1, finalTitle, finalContent, 0, 1, 0, 0, null, 0, 0, 0, null, 1, 0, System.currentTimeMillis(), 0, 0, 0, 0, 0);
                         viewModel.addNote(newNote);
                         Toast.makeText(this, "Nota importada e trancada!", Toast.LENGTH_SHORT).show();
                         viewModel.refreshNotes();
@@ -622,9 +674,72 @@ public class MainActivity extends AppCompatActivity {
         binding.searchView.getEditText().addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                viewModel.setQuery(s.toString());
+                if (searchRunnable != null) searchHandler.removeCallbacks(searchRunnable);
+                String q = s.toString();
+                searchRunnable = () -> viewModel.setQuery(q, true);
+                searchHandler.postDelayed(searchRunnable, 300);
             }
             @Override public void afterTextChanged(Editable s) {}
+        });
+        binding.searchView.addTransitionListener((searchView, previousState, newState) -> {
+            if (newState == com.google.android.material.search.SearchView.TransitionState.SHOWING) {
+                isSearchActive = true;
+            } else if (newState == com.google.android.material.search.SearchView.TransitionState.HIDING) {
+                isSearchActive = false;
+                binding.filterTypeAll.setChecked(true);
+                binding.filterColorAll.setChecked(true);
+                viewModel.clearFilters();
+                viewModel.setQuery("", false);
+                if (searchRunnable != null) searchHandler.removeCallbacks(searchRunnable);
+            }
+        });
+    }
+
+    private void setupFilters() {
+        int dp24 = (int)(24 * getResources().getDisplayMetrics().density);
+
+        binding.filterTypeGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            Set<Integer> types = null;
+            if (!checkedIds.contains(R.id.filterTypeAll) && !checkedIds.isEmpty()) {
+                types = new HashSet<>();
+                if (checkedIds.contains(R.id.filterTypeNotes)) types.add(0);
+                if (checkedIds.contains(R.id.filterTypeChecklists)) types.add(1);
+            }
+            viewModel.setTypeFilter(types);
+        });
+
+        for (int i = 0; i < EditActivity.noteColors.length; i++) {
+            Chip chip = new Chip(this);
+            chip.setId(View.generateViewId());
+            chip.setCheckable(true);
+            chip.setChipIconSize(dp24);
+            chip.setChipIconVisible(true);
+            chip.setText("");
+
+            GradientDrawable circle = new GradientDrawable();
+            circle.setShape(GradientDrawable.OVAL);
+            circle.setSize(dp24, dp24);
+            circle.setBounds(0, 0, dp24, dp24);
+            circle.setColor(Color.parseColor(EditActivity.noteColors[i]));
+            chip.setChipIcon(circle);
+            chip.setTag(i);
+
+            binding.filterColorGroup.addView(chip);
+        }
+
+        binding.filterColorGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (checkedIds.contains(R.id.filterColorAll) || checkedIds.isEmpty()) {
+                viewModel.setColorFilter(null);
+            } else {
+                Set<Integer> colors = new HashSet<>();
+                for (int id : checkedIds) {
+                    Chip c = group.findViewById(id);
+                    if (c != null && c.getTag() instanceof Integer) {
+                        colors.add((Integer) c.getTag());
+                    }
+                }
+                viewModel.setColorFilter(colors);
+            }
         });
     }
 

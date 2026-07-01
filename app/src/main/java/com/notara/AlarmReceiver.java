@@ -1,61 +1,79 @@
 package com.notara;
 
 import android.app.AlarmManager;
-import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Build;
+import android.os.PowerManager;
 import android.provider.Settings;
 import androidx.core.app.NotificationCompat;
 import com.notara.widget.NoteWidgetProvider;
 import java.util.Calendar;
 
 public class AlarmReceiver extends BroadcastReceiver {
+    private static PowerManager.WakeLock wakeLock;
+
+    private static final String EXTRA_NOTE_ALERT_TYPE = "NOTE_ALERT_TYPE";
+    private static final int NOTIFICATION_TYPE = 0;
+    private static final int ALARM_TYPE = 1;
+    private static final int NOTE_ALARM_OFFSET = 50000;
+
+    private static void acquireWakeLock(Context context) {
+        if (wakeLock == null) {
+            PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Notara:AlarmReceiver");
+        }
+        wakeLock.acquire(15000);
+    }
+
     @Override
     public void onReceive(Context context, Intent intent) {
-        String action = intent.getAction();
-        
-        if (AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED.equals(action)) {
-            rescheduleAllAlarms(context);
-            return;
-        }
+        acquireWakeLock(context);
+        try {
+            String action = intent.getAction();
+            int noteId = intent.getIntExtra("id", -1);
+            int itemId = intent.getIntExtra("ITEM_ID", -1);
+            int itemAlertType = intent.getIntExtra("ITEM_ALERT_TYPE", -1);
+            int noteAlertType = intent.getIntExtra(EXTRA_NOTE_ALERT_TYPE, -1);
 
-        int noteId = intent.getIntExtra("id", -1);
-        int itemId = intent.getIntExtra("ITEM_ID", -1);
-        int itemAlertType = intent.getIntExtra("ITEM_ALERT_TYPE", -1);
-        if (noteId == -1) return;
+            if (AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED.equals(action)) {
+                rescheduleAllAlarms(context);
+                return;
+            }
 
-        DatabaseHelper dbHelper = new DatabaseHelper(context);
-        NoteRepository repository = new NoteRepositoryImpl(dbHelper);
-        DatabaseHelper.Note note = repository.getNote(noteId);
-        if (note == null) return;
+            if (noteId == -1) return;
 
-        if (itemId != -1 && itemAlertType != -1) {
-            // Per-item alarm
-            if (itemAlertType == 1) {
-                sendFullScreenAlarm(context, note, itemId);
+            DatabaseHelper dbHelper = new DatabaseHelper(context);
+            NoteRepository repository = new NoteRepositoryImpl(dbHelper);
+            DatabaseHelper.Note note = repository.getNote(noteId);
+            if (note == null) return;
+
+            if (itemId != -1 && itemAlertType != -1) {
+                if (itemAlertType == 1) {
+                    sendFullScreenAlarm(context, note, itemId);
+                } else {
+                    sendNotification(context, note, itemId);
+                }
+                DatabaseHelper.ChecklistItem targetItem = null;
+                for (DatabaseHelper.ChecklistItem ci : dbHelper.getChecklistItems(noteId)) {
+                    if (ci.id == itemId) { targetItem = ci; break; }
+                }
+                if (targetItem != null && targetItem.recurrenceType > 0) {
+                    scheduleNextItemAlarm(context, noteId, targetItem);
+                }
             } else {
-                sendNotification(context, note, itemId);
+                if (noteAlertType == ALARM_TYPE) {
+                    sendFullScreenAlarm(context, note, -1);
+                    if (note.alarmRecurrenceType > 0) scheduleNextNoteAlarm(context, note);
+                } else {
+                    sendNotification(context, note, -1);
+                    if (note.recurrenceType > 0) scheduleNextAlarm(context, note);
+                }
             }
-            // Check recurrence on the item
-            DatabaseHelper.ChecklistItem targetItem = null;
-            for (DatabaseHelper.ChecklistItem ci : dbHelper.getChecklistItems(noteId)) {
-                if (ci.id == itemId) { targetItem = ci; break; }
-            }
-            if (targetItem != null && targetItem.recurrenceType > 0) {
-                scheduleNextItemAlarm(context, noteId, targetItem);
-            }
-        } else {
-            // Note-level alarm (text notes)
-            if (note.alertType == 1) {
-                sendFullScreenAlarm(context, note, -1);
-            } else {
-                sendNotification(context, note, -1);
-            }
-            if (note.recurrenceType > 0) scheduleNextAlarm(context, note);
+        } finally {
+            if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
         }
     }
 
@@ -68,7 +86,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         if (itemId != -1) alarmIntent.putExtra("ITEM_ID", itemId);
         alarmIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         
-        int requestCode = itemId != -1 ? note.id + itemId + 1000 : note.id;
+        int requestCode = itemId != -1 ? note.id + itemId + 1000 : note.id + NOTE_ALARM_OFFSET;
         PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(context, requestCode, 
                 alarmIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
@@ -79,9 +97,14 @@ public class AlarmReceiver extends BroadcastReceiver {
                 .setContentText(itemId != -1 ? "Alarme de item!" : "Alarme de Nota!")
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
-                .setFullScreenIntent(fullScreenPendingIntent, true)
                 .setAutoCancel(true)
                 .setOngoing(true);
+
+        if (PermissionUtils.canUseFullScreenIntent(context)) {
+            builder.setFullScreenIntent(fullScreenPendingIntent, true);
+        } else {
+            builder.setContentIntent(fullScreenPendingIntent);
+        }
 
         manager.notify(requestCode + 1000, builder.build());
     }
@@ -132,39 +155,62 @@ public class AlarmReceiver extends BroadcastReceiver {
         java.util.List<DatabaseHelper.Note> notes = repository.searchNotes("", false, null);
         for (DatabaseHelper.Note note : notes) {
             if (note.type == 1) {
-                // Checklist - reschedule per-item alarms
                 java.util.List<DatabaseHelper.ChecklistItem> items = dbHelper.getChecklistItems(note.id);
                 for (DatabaseHelper.ChecklistItem item : items) {
                     if (item.reminderTime > System.currentTimeMillis()) {
                         rescheduleItemAlarm(context, note.id, item);
                     }
                 }
-            } else if (note.reminderTime > System.currentTimeMillis()) {
+            }
+            if (note.reminderTime > System.currentTimeMillis()) {
                 rescheduleAlarm(context, note);
+            }
+            if (note.alarmTime > System.currentTimeMillis()) {
+                scheduleNoteAlarm(context, note);
             }
         }
     }
 
     public static void rescheduleAlarm(Context context, DatabaseHelper.Note note) {
+        scheduleNoteInternal(context, note.id, note.reminderTime, NOTIFICATION_TYPE);
+    }
+
+    public static void scheduleNoteAlarm(Context context, DatabaseHelper.Note note) {
+        scheduleNoteInternal(context, note.id, note.alarmTime, ALARM_TYPE);
+    }
+
+    private static void scheduleNoteInternal(Context context, int noteId, long time, int alertType) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(context, AlarmReceiver.class);
-        intent.putExtra("id", note.id);
-        
-        PendingIntent pi = PendingIntent.getBroadcast(context, note.id, intent, 
+        intent.putExtra("id", noteId);
+        intent.putExtra(EXTRA_NOTE_ALERT_TYPE, alertType);
+
+        int requestCode = alertType == ALARM_TYPE ? noteId + NOTE_ALARM_OFFSET : noteId;
+        PendingIntent pi = PendingIntent.getBroadcast(context, requestCode, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        if (note.reminderTime <= System.currentTimeMillis()) {
+        if (time <= System.currentTimeMillis()) {
             am.cancel(pi);
+            pi.cancel();
             return;
         }
 
-        scheduleExact(am, note.reminderTime, pi);
+        am.setAlarmClock(new AlarmManager.AlarmClockInfo(time, null), pi);
     }
 
     public static void cancelAlarm(Context context, int noteId) {
+        cancelNoteInternal(context, noteId, NOTIFICATION_TYPE);
+    }
+
+    public static void cancelNoteAlarm(Context context, int noteId) {
+        cancelNoteInternal(context, noteId, ALARM_TYPE);
+    }
+
+    private static void cancelNoteInternal(Context context, int noteId, int alertType) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        int requestCode = alertType == ALARM_TYPE ? noteId + NOTE_ALARM_OFFSET : noteId;
         Intent intent = new Intent(context, AlarmReceiver.class);
-        PendingIntent pi = PendingIntent.getBroadcast(context, noteId, intent, 
+        PendingIntent pi = PendingIntent.getBroadcast(context, requestCode, intent,
                 PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
         if (pi != null) {
             am.cancel(pi);
@@ -199,6 +245,33 @@ public class AlarmReceiver extends BroadcastReceiver {
         rescheduleAlarm(context, note);
     }
 
+    public static void scheduleNextNoteAlarm(Context context, DatabaseHelper.Note note) {
+        if (note.alarmTime <= 0) return;
+        Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis(note.alarmTime);
+        switch (note.alarmRecurrenceType) {
+            case 1: cal.add(Calendar.DAY_OF_YEAR, 1); break;
+            case 2: cal.add(Calendar.WEEK_OF_YEAR, 1); break;
+            case 3: cal.add(Calendar.MONTH, 1); break;
+            case 4: cal.add(Calendar.YEAR, 1); break;
+            case 5:
+                for (int i = 1; i <= 7; i++) {
+                    cal.add(Calendar.DAY_OF_YEAR, 1);
+                    int domToSab = cal.get(Calendar.DAY_OF_WEEK) - 1;
+                    if ((note.alarmRecurrenceDays & (1 << domToSab)) != 0) break;
+                }
+                break;
+        }
+        long nextAlarmTime = cal.getTimeInMillis();
+        note.alarmTime = nextAlarmTime;
+
+        NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
+        repository.updateNote(note);
+        NoteWidgetProvider.updateAllWidgets(context);
+
+        scheduleNoteAlarm(context, note);
+    }
+
     // Per-item alarm helpers
 
     public static void rescheduleItemAlarm(Context context, int noteId, DatabaseHelper.ChecklistItem item) {
@@ -228,7 +301,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         int requestCode = noteId * 1000 + itemId * 2 + alertType;
         PendingIntent pi = PendingIntent.getBroadcast(context, requestCode, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        scheduleExact(am, time, pi);
+        am.setAlarmClock(new AlarmManager.AlarmClockInfo(time, null), pi);
     }
 
     private static void cancelItemSingleAlarm(Context context, int noteId, int itemId, int alertType) {
@@ -240,18 +313,6 @@ public class AlarmReceiver extends BroadcastReceiver {
         if (pi != null) {
             am.cancel(pi);
             pi.cancel();
-        }
-    }
-
-    private static void scheduleExact(AlarmManager am, long time, PendingIntent pi) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (am.canScheduleExactAlarms()) {
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time, pi);
-            } else {
-                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time, pi);
-            }
-        } else {
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time, pi);
         }
     }
 

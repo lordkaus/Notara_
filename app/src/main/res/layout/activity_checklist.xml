@@ -58,7 +58,7 @@
             android:id="@+id/tilNewItem"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="30dp"
             app:hintEnabled="false"
             app:endIconMode="custom"
             app:endIconDrawable="@drawable/ic_add"
@@ -81,7 +81,7 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:layout_marginTop="8dp">
+            android:clipToPadding="false">
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvChecklist"
@@ -98,7 +98,7 @@
             android:layout_gravity="center"
             android:layout_marginTop="32dp"
             android:paddingStart="16dp"
-            android:paddingEnd="16dp"
+            android:paddingEnd="30dp"
             android:text="Clique duplo para adicionar lista"
             android:alpha="0.7"
             android:textSize="14sp"
@@ -145,14 +145,29 @@
             app:tint="?attr/colorOnSurfaceVariant" />
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/tvScheduleInfo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:layout_marginTop="85dp"
+        android:layout_marginEnd="2dp"
+        android:gravity="end"
+        android:textSize="11sp"
+        android:alpha="0.6"
+        android:maxLines="3"
+        android:maxWidth="200dp"
+        app:layout_anchor="@id/contentContainer"
+        app:layout_anchorGravity="top|end" />
+
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/btnConvertFAB"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="88dp"
+        android:layout_marginBottom="16dp"
         android:contentDescription="@null"
-        app:layout_anchor="@id/btnSaveChecklist"
-        app:layout_anchorGravity="start|center_vertical"
-        android:layout_marginEnd="80dp"
         app:srcCompat="@drawable/ic_convert"
         app:elevation="6dp"
         app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.MediumComponent" />

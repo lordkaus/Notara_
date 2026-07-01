@@ -1,10 +1,7 @@
 package com.notara;
 
 import java.util.List;
-
-/**
- * Implementação do repositório utilizando DatabaseHelper como fonte de dados.
- */
+import java.util.Set;
 public class NoteRepositoryImpl implements NoteRepository {
     private final DatabaseHelper db;
 
@@ -39,6 +36,11 @@ public class NoteRepositoryImpl implements NoteRepository {
     @Override
     public List<DatabaseHelper.Note> searchNotes(String query, boolean includeTrashed, String filterTag) {
         return db.searchNotes(query, includeTrashed, filterTag);
+    }
+
+    @Override
+    public List<DatabaseHelper.Note> searchNotes(String query, boolean includeTrashed, String filterTag, Set<Integer> filterColors, Set<Integer> filterTypes) {
+        return db.searchNotes(query, includeTrashed, filterTag, filterColors, filterTypes);
     }
 
     @Override

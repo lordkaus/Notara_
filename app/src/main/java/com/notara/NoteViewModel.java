@@ -5,37 +5,66 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class NoteViewModel extends AndroidViewModel {
     private final NoteRepository repository;
     private final MutableLiveData<List<DatabaseHelper.Note>> notes = new MutableLiveData<>();
     private String currentQuery = "";
     private boolean showTrashed = false;
+    private Set<Integer> filterColors;
+    private Set<Integer> filterTypes;
 
     public NoteViewModel(@NonNull Application application) {
         super(application);
         repository = new NoteRepositoryImpl(new DatabaseHelper(application));
-        refreshNotes();
+        refreshNotes(false);
     }
 
     public LiveData<List<DatabaseHelper.Note>> getNotes() {
         return notes;
     }
 
-    public void refreshNotes() {
-        notes.setValue(repository.searchNotes(currentQuery, showTrashed, null));
-        com.notara.widget.NoteWidgetProvider.updateAllWidgets(getApplication());
+    public String getCurrentQuery() {
+        return currentQuery;
     }
 
-    public void setQuery(String query) {
+    public void refreshNotes() {
+        refreshNotes(false);
+    }
+
+    public void refreshNotes(boolean skipWidgetUpdate) {
+        notes.setValue(repository.searchNotes(currentQuery, showTrashed, null, filterColors, filterTypes));
+        if (!skipWidgetUpdate)
+            com.notara.widget.NoteWidgetProvider.updateAllWidgets(getApplication());
+    }
+
+    public void setQuery(String query, boolean skipWidgetUpdate) {
         this.currentQuery = query;
-        refreshNotes();
+        refreshNotes(skipWidgetUpdate);
+    }
+
+    public void setTypeFilter(Set<Integer> types) {
+        this.filterTypes = types;
+        refreshNotes(true);
+    }
+
+    public void setColorFilter(Set<Integer> colors) {
+        this.filterColors = colors;
+        refreshNotes(true);
+    }
+
+    public void clearFilters() {
+        this.filterColors = null;
+        this.filterTypes = null;
+        refreshNotes(true);
     }
 
     public void toggleTrash(boolean show) {
         this.showTrashed = show;
-        refreshNotes();
+        refreshNotes(false);
     }
 
     public void pinNote(DatabaseHelper.Note note) {
@@ -43,26 +72,26 @@ public class NoteViewModel extends AndroidViewModel {
         DatabaseHelper.Note updated = copyNote(note);
         updated.isPinned = newPinned;
         repository.updateNote(updated);
-        refreshNotes();
+        refreshNotes(false);
     }
 
     public void moveToTrash(DatabaseHelper.Note note) {
         DatabaseHelper.Note updated = copyNote(note);
         updated.isTrashed = 1;
         repository.updateNote(updated);
-        refreshNotes();
+        refreshNotes(false);
     }
 
     public void restoreNote(DatabaseHelper.Note note) {
         DatabaseHelper.Note updated = copyNote(note);
         updated.isTrashed = 0;
         repository.updateNote(updated);
-        refreshNotes();
+        refreshNotes(false);
     }
 
     public void deleteNoteForever(int id) {
         repository.deleteNoteForever(id);
-        refreshNotes();
+        refreshNotes(false);
     }
 
     public DatabaseHelper.Note getNote(int id) {
@@ -72,13 +101,13 @@ public class NoteViewModel extends AndroidViewModel {
     public long addNote(DatabaseHelper.Note note) {
         long id = repository.addNote(note);
         com.notara.widget.NoteWidgetProvider.updateAllWidgets(getApplication());
-        refreshNotes();
+        refreshNotes(false);
         return id;
     }
 
     public void updateNote(DatabaseHelper.Note note) {
         repository.updateNote(note);
-        refreshNotes();
+        refreshNotes(false);
     }
 
     public List<DatabaseHelper.Note> getScheduledNotesUpTo(long endTime) {
@@ -91,12 +120,12 @@ public class NoteViewModel extends AndroidViewModel {
 
     public void clearTrash() {
         repository.clearTrash();
-        refreshNotes();
+        refreshNotes(false);
     }
 
     public void resetAllNotes() {
         repository.resetAllNotes();
-        refreshNotes();
+        refreshNotes(false);
     }
 
     public void toggleLock(DatabaseHelper.Note note) {
@@ -106,21 +135,18 @@ public class NoteViewModel extends AndroidViewModel {
 
         try {
             if (newLocked == 1) {
-                // Ao trancar, criptografa o conteúdo atual
                 updated.content = SecurityCore.encrypt(note.content);
             } else {
-                // Ao destrancar, descriptografa o conteúdo para texto simples
                 updated.content = SecurityCore.decrypt(note.content);
             }
             repository.updateNote(updated);
-            refreshNotes();
+            refreshNotes(false);
         } catch (Exception e) {
             e.printStackTrace();
-            // Em caso de erro (ex: falha no KeyStore), não altera o estado para não corromper os dados
         }
     }
 
     private DatabaseHelper.Note copyNote(DatabaseHelper.Note n) {
-        return new DatabaseHelper.Note(n.id, n.title, n.content, n.type, n.color, n.isPinned, n.isTrashed, n.tag, n.reminderTime, n.recurrenceType, n.recurrenceDays, n.attachments, n.isLocked, n.alertType, n.lastModified, n.originalReminderTime);
+        return new DatabaseHelper.Note(n.id, n.title, n.content, n.type, n.color, n.isPinned, n.isTrashed, n.tag, n.reminderTime, n.recurrenceType, n.recurrenceDays, n.attachments, n.isLocked, n.alertType, n.lastModified, n.originalReminderTime, n.alarmTime, n.alarmRecurrenceType, n.alarmRecurrenceDays, n.alarmOriginalReminderTime);
     }
 }

@@ -64,6 +64,9 @@
         <activity
             android:name=".TrashActivity"
             android:label="Lixeira" />
+        <activity
+            android:name=".ImageViewerActivity"
+            android:label="Visualizar" />
 
         <activity
             android:name=".AlarmActivity"
@@ -116,44 +119,44 @@
                     android:resource="@xml/note_widget_info_1x2" />
                 </receiver>
 
-                <receiver
-                    android:name=".widget.NoteWidgetProvider2x2"
-                    android:exported="false"
-                    android:label="@string/widget_label_2x2">
-                    <intent-filter>
-                        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                        <action android:name="com.notara.ACTION_WIDGET_CLICK" />
-                    </intent-filter>
-                    <meta-data
-                        android:name="android.appwidget.provider"
-                        android:resource="@xml/note_widget_info_2x2" />
-                    </receiver>
+        <receiver
+            android:name=".widget.NoteWidgetProvider2x2"
+            android:exported="false"
+            android:label="@string/widget_label_2x2">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.notara.ACTION_WIDGET_CLICK" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/note_widget_info_2x2" />
+        </receiver>
 
-                    <activity
-                        android:name=".widget.WidgetConfigActivity"
-                        android:exported="true"
-                        android:theme="@style/Theme.Notara">
-                        <intent-filter>
-                            <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
-                        </intent-filter>
-                    </activity>
+        <activity
+            android:name=".widget.WidgetConfigActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Notara">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
 
-                    <activity
-                        android:name=".widget.WidgetConfigActivity1x2"
-                        android:exported="true"
-                        android:theme="@style/Theme.Notara">
-                        <intent-filter>
-                            <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
-                        </intent-filter>
-                    </activity>
+        <activity
+            android:name=".widget.WidgetConfigActivity1x2"
+            android:exported="true"
+            android:theme="@style/Theme.Notara">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
 
-                    <service
-                        android:name=".widget.NoteWidgetService"
-                        android:permission="android.permission.BIND_REMOTEVIEWS" />
+        <service
+            android:name=".widget.NoteWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
 
-                    <service
-                        android:name=".widget.AllNotesWidgetService"
-                        android:permission="android.permission.BIND_REMOTEVIEWS" />
+        <service
+            android:name=".widget.AllNotesWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
 
-                    </application>
-                </manifest>
+    </application>
+</manifest>

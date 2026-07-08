@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.PowerManager;
 import android.provider.Settings;
+import android.util.Log;
 import androidx.core.app.NotificationCompat;
 import com.notara.widget.NoteWidgetProvider;
 import java.util.Calendar;
@@ -38,12 +39,17 @@ public class AlarmReceiver extends BroadcastReceiver {
             int itemAlertType = intent.getIntExtra("ITEM_ALERT_TYPE", -1);
             int noteAlertType = intent.getIntExtra(EXTRA_NOTE_ALERT_TYPE, -1);
 
+            Log.d("Notara_Alarm", "onReceive: action=" + action + " noteId=" + noteId + " itemId=" + itemId + " noteAlertType=" + noteAlertType);
+
             if (AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED.equals(action)) {
                 rescheduleAllAlarms(context);
                 return;
             }
 
-            if (noteId == -1) return;
+            if (noteId == -1) {
+                Log.w("Notara_Alarm", "onReceive: no noteId, ignoring");
+                return;
+            }
 
             DatabaseHelper dbHelper = new DatabaseHelper(context);
             NoteRepository repository = new NoteRepositoryImpl(dbHelper);
@@ -172,10 +178,12 @@ public class AlarmReceiver extends BroadcastReceiver {
     }
 
     public static void rescheduleAlarm(Context context, DatabaseHelper.Note note) {
+        Log.d("Notara_Alarm", "rescheduleAlarm: note " + note.id + " reminderTime=" + note.reminderTime + " (" + new java.util.Date(note.reminderTime) + ")");
         scheduleNoteInternal(context, note.id, note.reminderTime, NOTIFICATION_TYPE);
     }
 
     public static void scheduleNoteAlarm(Context context, DatabaseHelper.Note note) {
+        Log.d("Notara_Alarm", "scheduleNoteAlarm: note " + note.id + " alarmTime=" + note.alarmTime + " (" + new java.util.Date(note.alarmTime) + ")");
         scheduleNoteInternal(context, note.id, note.alarmTime, ALARM_TYPE);
     }
 
@@ -190,12 +198,18 @@ public class AlarmReceiver extends BroadcastReceiver {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         if (time <= System.currentTimeMillis()) {
+            Log.w("Notara_Alarm", "scheduleNoteInternal: time in the past for note " + noteId + ", cancelling");
             am.cancel(pi);
             pi.cancel();
             return;
         }
 
-        am.setAlarmClock(new AlarmManager.AlarmClockInfo(time, null), pi);
+        try {
+            am.setAlarmClock(new AlarmManager.AlarmClockInfo(time, null), pi);
+            Log.d("Notara_Alarm", "scheduleNoteInternal: note " + noteId + " alertType=" + alertType + " time=" + new java.util.Date(time));
+        } catch (Exception e) {
+            Log.e("Notara_Alarm", "scheduleNoteInternal: FAILED for note " + noteId, e);
+        }
     }
 
     public static void cancelAlarm(Context context, int noteId) {

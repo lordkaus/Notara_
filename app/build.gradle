@@ -40,8 +40,8 @@ android {
         applicationId "com.notara"
         minSdk 23
         targetSdk 35
-        versionCode 11
-        versionName "2.5"
+        versionCode 12
+        versionName "2.6"
         resConfigs "pt-rBR", "en"
     }
 

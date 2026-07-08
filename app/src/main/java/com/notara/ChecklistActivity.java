@@ -707,6 +707,7 @@ public class ChecklistActivity extends AppCompatActivity {
     }
 
     private void save() {
+        android.util.Log.d("Notara_Checklist", "save() called, noteId=" + noteId + " reminderTime=" + (currentNote != null ? currentNote.reminderTime : "null") + " alarmTime=" + (currentNote != null ? currentNote.alarmTime : "null"));
         String title = binding.etChecklistTitle.getText().toString();
         StringBuilder sb = new StringBuilder();
         for (DatabaseHelper.ChecklistItem i : items) sb.append(i.name).append("::").append(i.checked ? "1" : "0").append("\n");
@@ -727,8 +728,15 @@ public class ChecklistActivity extends AppCompatActivity {
             }
         }
 
-        if (currentNote == null) {
-            currentNote = new DatabaseHelper.Note(-1, title, finalContent, 1, selectedColor, 0, 0, null, 0, 0, 0, null, 0, 0, System.currentTimeMillis(), 0, 0, 0, 0, 0);
+        if (noteId == -1) {
+            if (currentNote == null) {
+                currentNote = new DatabaseHelper.Note(-1, title, finalContent, 1, selectedColor, 0, 0, null, 0, 0, 0, null, 0, 0, System.currentTimeMillis(), 0, 0, 0, 0, 0);
+            } else {
+                currentNote.title = title;
+                currentNote.content = finalContent;
+                currentNote.color = selectedColor;
+                currentNote.type = 1;
+            }
             noteId = (int) viewModel.addNote(currentNote); currentNote.id = noteId;
         } else {
             currentNote.title = title; currentNote.content = finalContent; currentNote.color = selectedColor;
@@ -759,6 +767,7 @@ public class ChecklistActivity extends AppCompatActivity {
         }
 
         // Schedule note-level alarm
+        android.util.Log.d("Notara_Checklist", "save: scheduling check, reminderTime=" + currentNote.reminderTime + " alarmTime=" + currentNote.alarmTime + " now=" + System.currentTimeMillis());
         if (currentNote.reminderTime > System.currentTimeMillis()) {
             AlarmReceiver.rescheduleAlarm(this, currentNote);
         } else if (currentNote.reminderTime > 0) {
@@ -852,6 +861,9 @@ public class ChecklistActivity extends AppCompatActivity {
     }
 
     private void showNoteReminderDialog() {
+        if (currentNote == null && noteId == -1) {
+            currentNote = new DatabaseHelper.Note(-1, "", "", 1, selectedColor, 0, 0, null, 0, 0, 0, null, 0, 0, System.currentTimeMillis(), 0, 0, 0, 0, 0);
+        }
         if (currentNote == null) return;
         if (!PermissionUtils.hasNotificationPermission(this)) {
             new MaterialAlertDialogBuilder(this).setTitle("Permissão Necessária").setMessage("Ative as notificações para receber lembretes.").setPositiveButton("Configurações", (d, w) -> PermissionUtils.openNotificationSettings(this)).setNegativeButton("Agora não", null).show();
@@ -861,6 +873,9 @@ public class ChecklistActivity extends AppCompatActivity {
     }
 
     private void showNoteAlarmDialog() {
+        if (currentNote == null && noteId == -1) {
+            currentNote = new DatabaseHelper.Note(-1, "", "", 1, selectedColor, 0, 0, null, 0, 0, 0, null, 0, 0, System.currentTimeMillis(), 0, 0, 0, 0, 0);
+        }
         if (currentNote == null) return;
         if (!PermissionUtils.hasNotificationPermission(this)) {
             new MaterialAlertDialogBuilder(this).setTitle("Permissão Necessária").setMessage("Ative as notificações para receber alarmes.").setPositiveButton("Configurações", (d, w) -> PermissionUtils.openNotificationSettings(this)).setNegativeButton("Agora não", null).show();
@@ -871,9 +886,15 @@ public class ChecklistActivity extends AppCompatActivity {
 
     private void pickNoteDateTime(boolean isAlarm) {
         long existingTime = isAlarm ? currentNote.alarmTime : currentNote.reminderTime;
+        final long defaultTime;
+        if (existingTime > 0) {
+            defaultTime = existingTime;
+        } else {
+            defaultTime = isAlarm ? currentNote.reminderTime : currentNote.alarmTime;
+        }
         com.google.android.material.datepicker.MaterialDatePicker<Long> dp = com.google.android.material.datepicker.MaterialDatePicker.Builder.datePicker()
                 .setTitleText("1. Escolha a Data")
-                .setSelection(existingTime > 0 ? existingTime : com.google.android.material.datepicker.MaterialDatePicker.todayInUtcMilliseconds())
+                .setSelection(defaultTime > 0 ? defaultTime : com.google.android.material.datepicker.MaterialDatePicker.todayInUtcMilliseconds())
                 .build();
         dp.addOnPositiveButtonClickListener(selection -> {
             Calendar cal = Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"));

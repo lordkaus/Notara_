@@ -613,9 +613,10 @@ public class EditActivity extends AppCompatActivity {
             return;
         }
 
+        long defaultReminderTime = reminderTime > 0 ? reminderTime : (alarmTime > 0 ? alarmTime : 0);
         com.google.android.material.datepicker.MaterialDatePicker<Long> datePicker = com.google.android.material.datepicker.MaterialDatePicker.Builder.datePicker()
                 .setTitleText("1. Escolha a Data")
-                .setSelection(reminderTime > 0 ? reminderTime : com.google.android.material.datepicker.MaterialDatePicker.todayInUtcMilliseconds())
+                .setSelection(defaultReminderTime > 0 ? defaultReminderTime : com.google.android.material.datepicker.MaterialDatePicker.todayInUtcMilliseconds())
                 .build();
 
         datePicker.addOnPositiveButtonClickListener(selection -> {
@@ -627,8 +628,8 @@ public class EditActivity extends AppCompatActivity {
             cal.set(pickedDate.getYear(), pickedDate.getMonthValue() - 1, pickedDate.getDayOfMonth());
 
             int initialHour = 9, initialMinute = 0;
-            if (reminderTime > 0) {
-                Calendar current = Calendar.getInstance(); current.setTimeInMillis(reminderTime);
+            if (defaultReminderTime > 0) {
+                Calendar current = Calendar.getInstance(); current.setTimeInMillis(defaultReminderTime);
                 initialHour = current.get(Calendar.HOUR_OF_DAY); initialMinute = current.get(Calendar.MINUTE);
             }
 
@@ -659,9 +660,10 @@ public class EditActivity extends AppCompatActivity {
             return;
         }
 
+        long defaultAlarmTime = alarmTime > 0 ? alarmTime : (reminderTime > 0 ? reminderTime : 0);
         com.google.android.material.datepicker.MaterialDatePicker<Long> datePicker = com.google.android.material.datepicker.MaterialDatePicker.Builder.datePicker()
                 .setTitleText("1. Escolha a Data")
-                .setSelection(alarmTime > 0 ? alarmTime : com.google.android.material.datepicker.MaterialDatePicker.todayInUtcMilliseconds())
+                .setSelection(defaultAlarmTime > 0 ? defaultAlarmTime : com.google.android.material.datepicker.MaterialDatePicker.todayInUtcMilliseconds())
                 .build();
 
         datePicker.addOnPositiveButtonClickListener(selection -> {
@@ -673,8 +675,8 @@ public class EditActivity extends AppCompatActivity {
             cal.set(pickedDate.getYear(), pickedDate.getMonthValue() - 1, pickedDate.getDayOfMonth());
 
             int initialHour = 9, initialMinute = 0;
-            if (alarmTime > 0) {
-                Calendar current = Calendar.getInstance(); current.setTimeInMillis(alarmTime);
+            if (defaultAlarmTime > 0) {
+                Calendar current = Calendar.getInstance(); current.setTimeInMillis(defaultAlarmTime);
                 initialHour = current.get(Calendar.HOUR_OF_DAY); initialMinute = current.get(Calendar.MINUTE);
             }
 

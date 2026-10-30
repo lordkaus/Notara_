@@ -171,9 +171,11 @@ public class ChecklistActivity extends AppCompatActivity {
         return super.dispatchTouchEvent(ev);
     }
 
+    private android.view.ViewTreeObserver.OnGlobalLayoutListener keyboardListener;
+
     private void setupKeyboardListener() {
         View root = binding.getRoot();
-        root.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+        keyboardListener = () -> {
             if (isPreviewMode || !isUnlocked) return;
             android.graphics.Rect r = new android.graphics.Rect();
             root.getWindowVisibleDisplayFrame(r);
@@ -188,7 +190,8 @@ public class ChecklistActivity extends AppCompatActivity {
                     binding.btnConvertFAB.setVisibility(View.VISIBLE);
                 }
             }
-        });
+        };
+        root.getViewTreeObserver().addOnGlobalLayoutListener(keyboardListener);
     }
 
     private void lockContent() {
@@ -744,26 +747,12 @@ public class ChecklistActivity extends AppCompatActivity {
             viewModel.updateNote(currentNote);
         }
 
-        // Save checklist items to table and schedule alarms
-        if (!wasLocked) {
-            DatabaseHelper dbHelper = new DatabaseHelper(this);
-            // Cancel old item alarms before deleting
-            java.util.List<DatabaseHelper.ChecklistItem> oldItems = dbHelper.getChecklistItems(noteId);
-            for (DatabaseHelper.ChecklistItem old : oldItems) {
-                AlarmReceiver.cancelItemAlarm(this, noteId, old.id);
-            }
-            dbHelper.deleteChecklistItemsByNoteId(noteId);
-            for (int i = 0; i < items.size(); i++) {
-                DatabaseHelper.ChecklistItem item = items.get(i);
-                item.noteId = noteId;
-                item.position = i;
-                dbHelper.insertChecklistItem(item);
-                if (item.reminderTime > System.currentTimeMillis()) {
-                    scheduleItemAlarm(item);
-                } else if (item.reminderTime > 0) {
-                    cancelItemAlarm(item);
-                }
-            }
+        // Save checklist items to table and schedule alarms.
+        // Also runs when the note is locked but the user authenticated: the
+        // table must not stay stale, otherwise unlocking later would load the
+        // old rows and silently discard edits made while locked.
+        if (!wasLocked || isUnlocked) {
+            syncChecklistItemsTable(this, noteId, items);
         }
 
         // Schedule note-level alarm
@@ -786,6 +775,70 @@ public class ChecklistActivity extends AppCompatActivity {
 
     private void scheduleItemAlarm(DatabaseHelper.ChecklistItem item) {
         AlarmReceiver.rescheduleItemAlarm(this, noteId, item);
+    }
+
+    /**
+     * Writes the in-memory checklist to the checklist_items table.
+     *
+     * Items parsed from decrypted content (locked note) have no id/schedule,
+     * so they are matched back to existing rows by position before updating.
+     * In-place updates keep ids alive, and ids are part of the alarm request
+     * code (noteId*1000 + itemId*2 + alertType).
+     */
+    static void syncChecklistItemsTable(android.content.Context context, int noteId,
+                                        java.util.List<DatabaseHelper.ChecklistItem> items) {
+        DatabaseHelper dbHelper = new DatabaseHelper(context);
+        java.util.List<DatabaseHelper.ChecklistItem> oldItems = dbHelper.getChecklistItems(noteId);
+
+        for (DatabaseHelper.ChecklistItem item : items) {
+            if (item.id > 0) continue;
+            DatabaseHelper.ChecklistItem match = null;
+            for (DatabaseHelper.ChecklistItem old : oldItems) {
+                if (old.position == item.position && old.name.equals(item.name)) { match = old; break; }
+            }
+            if (match == null) {
+                for (DatabaseHelper.ChecklistItem old : oldItems) {
+                    if (old.position == item.position) { match = old; break; }
+                }
+            }
+            if (match != null) {
+                item.id = match.id;
+                item.reminderTime = match.reminderTime;
+                item.originalReminderTime = match.originalReminderTime;
+                item.recurrenceType = match.recurrenceType;
+                item.recurrenceDays = match.recurrenceDays;
+                item.alertType = match.alertType;
+            }
+        }
+
+        // Cancel alarms of rows that are going away; survivors are rescheduled
+        // below (same request code, so this is idempotent).
+        java.util.Set<Integer> keptIds = new java.util.HashSet<>();
+        for (DatabaseHelper.ChecklistItem item : items) {
+            if (item.id > 0) keptIds.add(item.id);
+        }
+        for (DatabaseHelper.ChecklistItem old : oldItems) {
+            if (!keptIds.contains(old.id)) {
+                AlarmReceiver.cancelItemAlarm(context, noteId, old.id);
+                dbHelper.deleteChecklistItem(old.id);
+            }
+        }
+
+        for (int i = 0; i < items.size(); i++) {
+            DatabaseHelper.ChecklistItem item = items.get(i);
+            item.noteId = noteId;
+            item.position = i;
+            if (item.id > 0) {
+                dbHelper.updateChecklistItem(item);
+            } else {
+                dbHelper.insertChecklistItem(item);
+            }
+            if (item.reminderTime > System.currentTimeMillis()) {
+                AlarmReceiver.rescheduleItemAlarm(context, noteId, item);
+            } else if (item.reminderTime > 0) {
+                AlarmReceiver.cancelItemAlarm(context, noteId, item.id);
+            }
+        }
     }
 
     private void cancelItemAlarm(DatabaseHelper.ChecklistItem item) {
@@ -1103,6 +1156,16 @@ public class ChecklistActivity extends AppCompatActivity {
         return true;
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Lifecycle: remove GlobalLayoutListener to prevent activity leak
+        if (keyboardListener != null && binding != null) {
+            binding.getRoot().getViewTreeObserver().removeOnGlobalLayoutListener(keyboardListener);
+            keyboardListener = null;
+        }
+    }
+
     @Override protected void onPause() { super.onPause(); if (!saved) save(); }
 
     class CheckAdapter extends RecyclerView.Adapter<CheckAdapter.VH> {
@@ -1115,6 +1178,7 @@ public class ChecklistActivity extends AppCompatActivity {
 
             h.binding.cbItem.setOnCheckedChangeListener(null);
             if (h.watcher != null) h.binding.etItemName.removeTextChangedListener(h.watcher);
+            h.watcher = null;
 
             h.binding.cbItem.setChecked(i.checked);
             applyTextWithEffect(h, i.name, i.checked);

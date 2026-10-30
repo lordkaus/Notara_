@@ -44,7 +44,7 @@ public class NoteWidgetService extends RemoteViewsService {
 
         private void loadData() {
             if (noteId == -1) return;
-            NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
+            NoteRepository repository = new NoteRepositoryImpl(context);
             DatabaseHelper.Note note = repository.getNote(noteId);
             items.clear();
             checkedStatus.clear();
@@ -68,6 +68,7 @@ public class NoteWidgetService extends RemoteViewsService {
 
         @Override
         public RemoteViews getViewAt(int position) {
+            if (position < 0 || position >= items.size()) return null;
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_list_item);
             views.setTextViewText(R.id.widget_item_text, items.get(position));
             

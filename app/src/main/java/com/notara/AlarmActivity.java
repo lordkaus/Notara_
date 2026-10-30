@@ -71,41 +71,52 @@ public class AlarmActivity extends AppCompatActivity {
         Button btnStop = findViewById(R.id.btnStopAlarm);
 
         if (currentNote != null) {
-            tvTitle.setText(currentNote.title != null ? currentNote.title : "Notara_");
-            
-            try {
-                int colorIndex = currentNote.color;
-                if (colorIndex < 0 || colorIndex >= EditActivity.noteColors.length) colorIndex = 0;
-                
-                int noteColor = Color.parseColor(EditActivity.noteColors[colorIndex]);
-                if (rootLayout != null) rootLayout.setBackgroundColor(noteColor);
-                
-                int textColor = getContrastColor(noteColor);
-                if (tvTitle != null) tvTitle.setTextColor(textColor);
-                if (tvContent != null) tvContent.setTextColor(textColor);
-                if (btnStop != null) {
-                    btnStop.setTextColor(textColor);
-                    btnStop.setBackgroundColor(adjustAlpha(textColor, 0.2f));
+            if (currentNote.isLocked == 1) {
+                // Never expose the title, ciphertext, or item names of a locked
+                // note on the alarm screen. Editing is disabled below.
+                tvTitle.setText("Nota Protegida");
+                if (tvContent != null) {
+                    tvContent.setVisibility(View.VISIBLE);
+                    tvContent.setText("Desbloqueie no Notara_ para ver o conteúdo.");
                 }
+                if (rvChecklist != null) rvChecklist.setVisibility(View.GONE);
+            } else {
+                tvTitle.setText(currentNote.title != null ? currentNote.title : "Notara_");
 
-                if (currentNote.type == 1) { // Checklist
-                    if (tvContent != null) tvContent.setVisibility(View.GONE);
-                    if (rvChecklist != null) {
-                        rvChecklist.setVisibility(View.VISIBLE);
-                        parseContent(currentNote.content);
-                        rvChecklist.setLayoutManager(new LinearLayoutManager(this));
-                        rvChecklist.setAdapter(new AlarmCheckAdapter(textColor));
+                try {
+                    int colorIndex = currentNote.color;
+                    if (colorIndex < 0 || colorIndex >= EditActivity.noteColors.length) colorIndex = 0;
+
+                    int noteColor = Color.parseColor(EditActivity.noteColors[colorIndex]);
+                    if (rootLayout != null) rootLayout.setBackgroundColor(noteColor);
+
+                    int textColor = getContrastColor(noteColor);
+                    if (tvTitle != null) tvTitle.setTextColor(textColor);
+                    if (tvContent != null) tvContent.setTextColor(textColor);
+                    if (btnStop != null) {
+                        btnStop.setTextColor(textColor);
+                        btnStop.setBackgroundColor(adjustAlpha(textColor, 0.2f));
                     }
-                } else { // Texto
-                    if (tvContent != null) {
-                        tvContent.setVisibility(View.VISIBLE);
-                        tvContent.setText(currentNote.content != null ? currentNote.content : "");
+
+                    if (currentNote.type == 1) { // Checklist
+                        if (tvContent != null) tvContent.setVisibility(View.GONE);
+                        if (rvChecklist != null) {
+                            rvChecklist.setVisibility(View.VISIBLE);
+                            parseContent(currentNote.content);
+                            rvChecklist.setLayoutManager(new LinearLayoutManager(this));
+                            rvChecklist.setAdapter(new AlarmCheckAdapter(textColor));
+                        }
+                    } else { // Texto
+                        if (tvContent != null) {
+                            tvContent.setVisibility(View.VISIBLE);
+                            tvContent.setText(currentNote.content != null ? currentNote.content : "");
+                        }
+                        if (rvChecklist != null) rvChecklist.setVisibility(View.GONE);
                     }
-                    if (rvChecklist != null) rvChecklist.setVisibility(View.GONE);
+                } catch (Exception e) {
+                    if (rootLayout != null) rootLayout.setBackgroundColor(Color.parseColor("#121212"));
+                    e.printStackTrace();
                 }
-            } catch (Exception e) {
-                if (rootLayout != null) rootLayout.setBackgroundColor(Color.parseColor("#121212"));
-                e.printStackTrace();
             }
         }
 
@@ -175,11 +186,24 @@ public class AlarmActivity extends AppCompatActivity {
     }
 
     private void saveChecklist() {
-        if (currentNote != null) {
+        if (currentNote != null && currentNote.isLocked != 1) {
             StringBuilder sb = new StringBuilder();
             for (CheckItem i : checkItems) sb.append(i.name).append("::").append(i.checked ? "1" : "0").append("\n");
             currentNote.content = sb.toString();
             db.updateNote(currentNote);
+
+            // Keep checklist_items in sync (ids/schedules preserved). Without
+            // this, ChecklistActivity (which prefers the table) and the widget
+            // would show the old checked state.
+            List<DatabaseHelper.ChecklistItem> tableItems = new ArrayList<>();
+            for (CheckItem ci : checkItems) {
+                DatabaseHelper.ChecklistItem item = new DatabaseHelper.ChecklistItem();
+                item.name = ci.name;
+                item.checked = ci.checked;
+                tableItems.add(item);
+            }
+            ChecklistActivity.syncChecklistItemsTable(this, currentNote.id, tableItems);
+
             NoteWidgetProvider.updateAllWidgets(this);
         }
     }

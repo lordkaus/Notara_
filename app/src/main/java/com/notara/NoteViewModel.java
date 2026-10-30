@@ -19,7 +19,7 @@ public class NoteViewModel extends AndroidViewModel {
 
     public NoteViewModel(@NonNull Application application) {
         super(application);
-        repository = new NoteRepositoryImpl(new DatabaseHelper(application));
+        repository = new NoteRepositoryImpl(application);
         refreshNotes(false);
     }
 
@@ -79,6 +79,18 @@ public class NoteViewModel extends AndroidViewModel {
         DatabaseHelper.Note updated = copyNote(note);
         updated.isTrashed = 1;
         repository.updateNote(updated);
+        // BUG FIX: Cancel pending alarms when moving to trash
+        if (updated.reminderTime > 0) {
+            AlarmReceiver.cancelAlarm(getApplication(), updated.id);
+        }
+        if (updated.alarmTime > 0) {
+            AlarmReceiver.cancelNoteAlarm(getApplication(), updated.id);
+        }
+        if (updated.type == 1) {
+            for (DatabaseHelper.ChecklistItem item : new DatabaseHelper(getApplication()).getChecklistItems(updated.id)) {
+                AlarmReceiver.cancelItemAlarm(getApplication(), updated.id, item.id);
+            }
+        }
         refreshNotes(false);
     }
 
@@ -86,11 +98,32 @@ public class NoteViewModel extends AndroidViewModel {
         DatabaseHelper.Note updated = copyNote(note);
         updated.isTrashed = 0;
         repository.updateNote(updated);
+        // BUG FIX: Re-schedule alarms when restoring from trash
+        if (updated.reminderTime > System.currentTimeMillis()) {
+            AlarmReceiver.rescheduleAlarm(getApplication(), updated);
+        }
+        if (updated.alarmTime > System.currentTimeMillis()) {
+            AlarmReceiver.scheduleNoteAlarm(getApplication(), updated);
+        }
+        if (updated.type == 1) {
+            for (DatabaseHelper.ChecklistItem item : new DatabaseHelper(getApplication()).getChecklistItems(updated.id)) {
+                if (item.reminderTime > System.currentTimeMillis()) {
+                    AlarmReceiver.rescheduleItemAlarm(getApplication(), updated.id, item);
+                }
+            }
+        }
         refreshNotes(false);
     }
 
     public void deleteNoteForever(int id) {
+        DatabaseHelper helper = new DatabaseHelper(getApplication());
+        AlarmReceiver.cancelAlarm(getApplication(), id);
+        AlarmReceiver.cancelNoteAlarm(getApplication(), id);
+        for (DatabaseHelper.ChecklistItem item : helper.getChecklistItems(id)) {
+            AlarmReceiver.cancelItemAlarm(getApplication(), id, item.id);
+        }
         repository.deleteNoteForever(id);
+        AttachmentManager.deleteNoteAttachmentDir(getApplication(), id);
         refreshNotes(false);
     }
 
@@ -119,12 +152,45 @@ public class NoteViewModel extends AndroidViewModel {
     }
 
     public void clearTrash() {
+        // BUG FIX: Cancel pending alarms for trashed notes before deleting
+        List<DatabaseHelper.Note> trashedNotes = repository.searchNotes("", true, null);
+        for (DatabaseHelper.Note note : trashedNotes) {
+            if (note.isTrashed == 1) {
+                AlarmReceiver.cancelAlarm(getApplication(), note.id);
+                AlarmReceiver.cancelNoteAlarm(getApplication(), note.id);
+                for (DatabaseHelper.ChecklistItem item : new DatabaseHelper(getApplication()).getChecklistItems(note.id)) {
+                    AlarmReceiver.cancelItemAlarm(getApplication(), note.id, item.id);
+                }
+            }
+        }
         repository.clearTrash();
+        for (DatabaseHelper.Note note : trashedNotes) {
+            if (note.isTrashed == 1) {
+                AttachmentManager.deleteNoteAttachmentDir(getApplication(), note.id);
+            }
+        }
         refreshNotes(false);
     }
 
     public void resetAllNotes() {
+        // NOTE: searchNotes("", true, ...) returns ONLY trashed notes despite the
+        // includeTrashed name, so collect both halves before wiping.
+        List<DatabaseHelper.Note> all = new java.util.ArrayList<>();
+        all.addAll(repository.searchNotes("", false, null));
+        all.addAll(repository.searchNotes("", true, null));
+        // Cancel every pending alarm before wiping the rows they point to.
+        DatabaseHelper helper = new DatabaseHelper(getApplication());
+        for (DatabaseHelper.Note note : all) {
+            AlarmReceiver.cancelAlarm(getApplication(), note.id);
+            AlarmReceiver.cancelNoteAlarm(getApplication(), note.id);
+            for (DatabaseHelper.ChecklistItem item : helper.getChecklistItems(note.id)) {
+                AlarmReceiver.cancelItemAlarm(getApplication(), note.id, item.id);
+            }
+        }
         repository.resetAllNotes();
+        for (DatabaseHelper.Note note : all) {
+            AttachmentManager.deleteNoteAttachmentDir(getApplication(), note.id);
+        }
         refreshNotes(false);
     }
 

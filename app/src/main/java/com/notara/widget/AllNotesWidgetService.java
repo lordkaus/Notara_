@@ -44,7 +44,7 @@ public class AllNotesWidgetService extends RemoteViewsService {
         }
 
         private void loadData() {
-            NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
+            NoteRepository repository = new NoteRepositoryImpl(context);
             // Busca todas as notas (não excluídas), ordenadas por modificação
             notes = repository.searchNotes("", false, null);
         }

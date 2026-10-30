@@ -62,11 +62,15 @@ public class AlarmReceiver extends BroadcastReceiver {
                 } else {
                     sendNotification(context, note, itemId);
                 }
+                // BUG FIX: When alertType==2 (both), two alarms fire at the same time.
+                // Only advance recurrence if reminderTime hasn't been updated yet
+                // (still in the past), preventing double-advance that skips occurrences.
                 DatabaseHelper.ChecklistItem targetItem = null;
                 for (DatabaseHelper.ChecklistItem ci : dbHelper.getChecklistItems(noteId)) {
                     if (ci.id == itemId) { targetItem = ci; break; }
                 }
-                if (targetItem != null && targetItem.recurrenceType > 0) {
+                if (targetItem != null && targetItem.recurrenceType > 0
+                        && targetItem.reminderTime <= System.currentTimeMillis()) {
                     scheduleNextItemAlarm(context, noteId, targetItem);
                 }
             } else {
@@ -96,11 +100,14 @@ public class AlarmReceiver extends BroadcastReceiver {
         PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(context, requestCode, 
                 alarmIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        String title = itemId != -1 ? getItemTitle(context, note.id, itemId) : note.title;
+        String title = note.isLocked == 1 ? "Nota Protegida"
+                : (itemId != -1 ? getItemTitle(context, note.id, itemId) : note.title);
+        String body = note.isLocked == 1 ? "Alarme de nota protegida"
+                : (itemId != -1 ? "Alarme de item!" : "Alarme de Nota!");
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
                 .setContentTitle(title != null ? title : note.title)
-                .setContentText(itemId != -1 ? "Alarme de item!" : "Alarme de Nota!")
+                .setContentText(body)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setAutoCancel(true)
@@ -128,13 +135,28 @@ public class AlarmReceiver extends BroadcastReceiver {
         PendingIntent pi = PendingIntent.getActivity(context, requestCode, activityIntent, 
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        String title = itemId != -1 ? getItemTitle(context, note.id, itemId) : note.title;
-        String content = note.content != null && note.content.length() > 50 ? note.content.substring(0, 47) + "…" : note.content;
-        if (title != null) content = title;
+        String title;
+        String content;
+        if (note.isLocked == 1) {
+            // Locked notes must not leak the real title, item names, or the
+            // ciphertext stored in note.content.
+            title = "Nota Protegida";
+            content = itemId != -1 ? "Lembrete de item" : "Toque para desbloquear";
+        } else {
+            title = note.title;
+            if (itemId != -1) {
+                // Item alerts: note title on top, item name as body.
+                String itemName = getItemTitle(context, note.id, itemId);
+                content = itemName != null ? itemName : "Lembrete de item";
+            } else {
+                content = note.content != null && note.content.length() > 50
+                        ? note.content.substring(0, 47) + "…" : note.content;
+            }
+        }
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(android.R.drawable.ic_popup_reminder)
-                .setContentTitle(note.title)
+                .setContentTitle(title != null ? title : "Notara_")
                 .setContentText(content)
                 .setSound(Settings.System.DEFAULT_NOTIFICATION_URI)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -252,7 +274,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         long nextReminderTime = cal.getTimeInMillis();
         note.reminderTime = nextReminderTime;
         
-        NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
+        NoteRepository repository = new NoteRepositoryImpl(context);
         repository.updateNote(note);
         NoteWidgetProvider.updateAllWidgets(context);
         
@@ -279,7 +301,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         long nextAlarmTime = cal.getTimeInMillis();
         note.alarmTime = nextAlarmTime;
 
-        NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
+        NoteRepository repository = new NoteRepositoryImpl(context);
         repository.updateNote(note);
         NoteWidgetProvider.updateAllWidgets(context);
 

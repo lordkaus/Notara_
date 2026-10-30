@@ -31,6 +31,7 @@ public class SecurityManager {
     }
 
     private final Context context;
+    private SharedPreferences cachedPrefs;
 
     public SecurityManager(Context context) {
         this.context = context;
@@ -220,16 +221,18 @@ public class SecurityManager {
     }
 
     private SharedPreferences getEncryptedPrefs() throws Exception {
+        if (cachedPrefs != null) return cachedPrefs;
         androidx.security.crypto.MasterKey masterKey = new androidx.security.crypto.MasterKey.Builder(context)
                 .setKeyScheme(androidx.security.crypto.MasterKey.KeyScheme.AES256_GCM)
                 .build();
 
-        return androidx.security.crypto.EncryptedSharedPreferences.create(
+        cachedPrefs = androidx.security.crypto.EncryptedSharedPreferences.create(
                 context,
                 "notara_secure_storage",
                 masterKey,
                 androidx.security.crypto.EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         );
+        return cachedPrefs;
     }
 }

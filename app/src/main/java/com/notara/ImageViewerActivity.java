@@ -247,7 +247,12 @@ public class ImageViewerActivity extends AppCompatActivity {
         Bitmap combined = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         android.graphics.Canvas c = new android.graphics.Canvas(combined);
         c.drawBitmap(originalBitmap, 0, 0, null);
-        Bitmap drawingBmp = drawingView.getDrawingBitmap(w, h);
+        // DrawingView gestures are in view coordinates; map them back to the
+        // original bitmap, otherwise strokes land at the wrong place whenever
+        // the image is scaled/centered by fitCenter (i.e. almost always).
+        android.graphics.Matrix toBitmap = new android.graphics.Matrix();
+        if (!imageView.getImageMatrix().invert(toBitmap)) toBitmap.reset();
+        Bitmap drawingBmp = drawingView.getDrawingBitmap(w, h, toBitmap);
         c.drawBitmap(drawingBmp, 0, 0, null);
         drawingBmp.recycle();
 

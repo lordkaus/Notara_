@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.util.AttributeSet;
@@ -111,8 +112,18 @@ public class DrawingView extends View {
     }
 
     public Bitmap getDrawingBitmap(int width, int height) {
+        return getDrawingBitmap(width, height, null);
+    }
+
+    /**
+     * @param transform canvas transform applied before drawing. Used by the
+     *                  viewer to map view-space gestures into image-space
+     *                  coordinates (fitCenter scale + centering offset).
+     */
+    public Bitmap getDrawingBitmap(int width, int height, Matrix transform) {
         Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(bmp);
+        if (transform != null) c.concat(transform);
         for (int i = 0; i < paths.size(); i++) {
             c.drawPath(paths.get(i), paints.get(i));
         }

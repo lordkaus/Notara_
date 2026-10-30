@@ -178,7 +178,8 @@ public class CalendarActivity extends AppCompatActivity {
                     int colorIndex = n.color;
                     String colorHex = EditActivity.noteColors[colorIndex % EditActivity.noteColors.length];
                     colors.add(Color.parseColor(colorHex));
-                    ghosts.add(!isSameDay(date, n.getLocalDate()));
+                    boolean isAnchorDay = isSameDay(date, n.getLocalDate()) || isSameDay(date, n.getAlarmLocalDate());
+                    ghosts.add(!isAnchorDay);
 
                     count++;
                     if (count >= 3) break;
@@ -203,8 +204,8 @@ public class CalendarActivity extends AppCompatActivity {
 
         for (DatabaseHelper.Note n : allScheduledNotes) {
             if (shouldShowOnDay(selDate, n)) {
-                java.time.LocalDate nDate = n.getLocalDate();
-                if (!isSameDay(selDate, nDate)) {
+                boolean isAnchorDay = isSameDay(selDate, n.getLocalDate()) || isSameDay(selDate, n.getAlarmLocalDate());
+                if (!isAnchorDay) {
                     dayNotes.add(n.asGhost());
                 } else {
                     n.isGhost = false;
@@ -217,13 +218,18 @@ public class CalendarActivity extends AppCompatActivity {
         binding.tvSelectedDate.setText(getString(R.string.notes_on_date, sdf.format(selectedDate.getTime())));
     }
 
-    private boolean shouldShowOnDay(java.time.LocalDate gridDate, DatabaseHelper.Note note) {
-        java.time.LocalDate eventDate = note.getLocalDate();
+    static boolean shouldShowOnDay(java.time.LocalDate gridDate, DatabaseHelper.Note note) {
+        if (matchesSeries(gridDate, note.getLocalDate(), note.recurrenceType, note.recurrenceDays)) return true;
+        return matchesSeries(gridDate, note.getAlarmLocalDate(), note.alarmRecurrenceType, note.alarmRecurrenceDays);
+    }
+
+    static boolean matchesSeries(java.time.LocalDate gridDate, java.time.LocalDate eventDate, int recurrenceType, int recurrenceDays) {
+        if (eventDate == null) return false;
         if (gridDate.isBefore(eventDate)) return false;
         if (gridDate.isEqual(eventDate)) return true;
-        if (note.recurrenceType == 0) return false;
+        if (recurrenceType == 0) return false;
 
-        switch (note.recurrenceType) {
+        switch (recurrenceType) {
             case 1: return true;
             case 2: return gridDate.getDayOfWeek() == eventDate.getDayOfWeek();
             case 3:
@@ -238,7 +244,7 @@ public class CalendarActivity extends AppCompatActivity {
             case 5:
                 int dayOfWeekValue = gridDate.getDayOfWeek().getValue();
                 int bitShift = dayOfWeekValue % 7;
-                return (note.recurrenceDays & (1 << bitShift)) != 0;
+                return (recurrenceDays & (1 << bitShift)) != 0;
         }
         return false;
     }

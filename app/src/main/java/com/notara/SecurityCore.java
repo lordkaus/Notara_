@@ -7,7 +7,7 @@ import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
-import android.util.Base64;
+import java.util.Base64;
 
 /**
  * Núcleo de criptografia AES-GCM usando Android KeyStore.
@@ -65,7 +65,7 @@ public class SecurityCore {
         System.arraycopy(iv, 0, combined, 0, iv.length);
         System.arraycopy(encrypted, 0, combined, iv.length, encrypted.length);
         
-        return Base64.encodeToString(combined, Base64.NO_WRAP);
+        return Base64.getEncoder().encodeToString(combined);
     }
 
     /**
@@ -74,7 +74,7 @@ public class SecurityCore {
     public static String decrypt(String encryptedData) throws Exception {
         if (encryptedData == null) return null;
         
-        byte[] combined = Base64.decode(encryptedData, Base64.NO_WRAP);
+        byte[] combined = Base64.getDecoder().decode(encryptedData);
         if (combined.length <= IV_LENGTH) {
             throw new IllegalArgumentException("Dados criptografados inválidos ou corrompidos");
         }

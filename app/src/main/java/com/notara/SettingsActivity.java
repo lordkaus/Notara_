@@ -84,7 +84,7 @@ public class SettingsActivity extends AppCompatActivity {
                 Uri uri = result.getData().getData();
                 if (uri == null) return;
                 try {
-                    NoteRepository repo = new NoteRepositoryImpl(new DatabaseHelper(this));
+                    NoteRepository repo = new NoteRepositoryImpl(this);
                     List<DatabaseHelper.Note> notes = repo.searchNotes("", false, null);
                     if (notes.isEmpty()) {
                         Toast.makeText(this, R.string.backup_empty, Toast.LENGTH_SHORT).show();
@@ -113,7 +113,7 @@ public class SettingsActivity extends AppCompatActivity {
                 if (uri == null) return;
                 String data;
                 try {
-                    data = readUriContent(uri);
+                    data = NoteShareManager.readUriContent(this, uri);
                 } catch (Exception e) {
                     Toast.makeText(this, getString(R.string.backup_read_error) + ": " + e.getMessage(), Toast.LENGTH_LONG).show();
                     return;
@@ -148,7 +148,7 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void launchExport() {
-        NoteRepository repo = new NoteRepositoryImpl(new DatabaseHelper(this));
+        NoteRepository repo = new NoteRepositoryImpl(this);
         List<DatabaseHelper.Note> notes = repo.searchNotes("", false, null);
         if (notes.isEmpty()) {
             Toast.makeText(this, R.string.backup_empty, Toast.LENGTH_SHORT).show();
@@ -162,25 +162,20 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private String readUriContent(Uri uri) throws IOException {
-        Exception lastEx = null;
-        if (!"content".equals(uri.getScheme())) {
-            try (InputStream is = new FileInputStream(uri.getPath())) {
-                return safeRead(is);
-            } catch (Exception e) { lastEx = e; }
-        }
-        try (InputStream is = getContentResolver().openInputStream(uri)) {
-            if (is != null) return safeRead(is);
+        try {
+            return NoteShareManager.readUriContent(this, uri);
+        } catch (IOException e) {
+            throw e;
         } catch (Exception e) {
-            lastEx = e;
+            // Fallback: try file-based path extraction
+            String path = extractPathFromUri(uri);
+            if (path != null) {
+                try (InputStream is = new FileInputStream(path)) {
+                    return BackupManager.read(is);
+                } catch (Exception ignored) {}
+            }
+            throw new IOException(e);
         }
-        String path = extractPathFromUri(uri);
-        if (path != null) {
-            try (InputStream is = new FileInputStream(path)) {
-                return safeRead(is);
-            } catch (Exception ignored) {}
-        }
-        if (lastEx != null) throw new IOException(lastEx);
-        throw new IOException("Não foi possível ler o arquivo");
     }
 
     private String safeRead(InputStream is) throws IOException {
@@ -285,7 +280,20 @@ public class SettingsActivity extends AppCompatActivity {
         int count = 0;
         for (DatabaseHelper.Note note : notes) {
             note.id = -1;
-            viewModel.addNote(note);
+            long newId = viewModel.addNote(note);
+            // BUG FIX: Schedule alarms for restored notes that have future alarm times
+            if (note.reminderTime > System.currentTimeMillis()) {
+                DatabaseHelper.Note restoredNote = viewModel.getNote((int) newId);
+                if (restoredNote != null) {
+                    AlarmReceiver.rescheduleAlarm(this, restoredNote);
+                }
+            }
+            if (note.alarmTime > System.currentTimeMillis()) {
+                DatabaseHelper.Note restoredNote = viewModel.getNote((int) newId);
+                if (restoredNote != null) {
+                    AlarmReceiver.scheduleNoteAlarm(this, restoredNote);
+                }
+            }
             count++;
         }
         Toast.makeText(this, getString(R.string.backup_restored, count), Toast.LENGTH_SHORT).show();
@@ -328,6 +336,27 @@ public class SettingsActivity extends AppCompatActivity {
             .show();
     }
 
+    private static String recurrenceName(int type) {
+        switch (type) {
+            case 1: return "Diária";
+            case 2: return "Semanal";
+            case 3: return "Mensal";
+            case 4: return "Anual";
+            case 5: return "Personalizada";
+            default: return "";
+        }
+    }
+
+    private static String recurrenceLabel(DatabaseHelper.Note note) {
+        String reminder = recurrenceName(note.recurrenceType);
+        String alarm = recurrenceName(note.alarmRecurrenceType);
+        if (!reminder.isEmpty() && !alarm.isEmpty())
+            return " (" + reminder + " + alarme " + alarm.toLowerCase(java.util.Locale.ROOT) + ")";
+        if (!reminder.isEmpty()) return " (" + reminder + ")";
+        if (!alarm.isEmpty()) return " (Alarme " + alarm + ")";
+        return "";
+    }
+
     private void setupPlanningSettings() {
         findViewById(R.id.btnRecurringNotes).setOnClickListener(v -> {
             List<DatabaseHelper.Note> recurringNotes = viewModel.getRecurringNotes();
@@ -340,15 +369,7 @@ public class SettingsActivity extends AppCompatActivity {
             for (int i = 0; i < recurringNotes.size(); i++) {
                 DatabaseHelper.Note note = recurringNotes.get(i);
                 String prefix = note.type == 1 ? "[Lista] " : "[Nota] ";
-                String rec = "";
-                switch (note.recurrenceType) {
-                    case 1: rec = " (Diária)"; break;
-                    case 2: rec = " (Semanal)"; break;
-                    case 3: rec = " (Mensal)"; break;
-                    case 4: rec = " (Anual)"; break;
-                    case 5: rec = " (Personalizada)"; break;
-                }
-                titles[i] = prefix + (note.title.isEmpty() ? DatabaseHelper.Note.extractTitle(note.content) : note.title) + rec;
+                titles[i] = prefix + (note.title.isEmpty() ? DatabaseHelper.Note.extractTitle(note.content) : note.title) + recurrenceLabel(note);
             }
 
             new MaterialAlertDialogBuilder(this)
@@ -477,6 +498,21 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void performFullReset() {
+        // BUG FIX: Cancel all pending alarms before deleting notes
+        DatabaseHelper dbHelper = new DatabaseHelper(this);
+        com.notara.NoteRepository repo = new com.notara.NoteRepositoryImpl(dbHelper);
+        List<DatabaseHelper.Note> allNotes = repo.searchNotes("", false, null);
+        List<DatabaseHelper.Note> trashedNotes = repo.searchNotes("", true, null);
+        for (DatabaseHelper.Note note : allNotes) {
+            AlarmReceiver.cancelAlarm(this, note.id);
+            AlarmReceiver.cancelNoteAlarm(this, note.id);
+        }
+        for (DatabaseHelper.Note note : trashedNotes) {
+            if (note.isTrashed == 1) {
+                AlarmReceiver.cancelAlarm(this, note.id);
+                AlarmReceiver.cancelNoteAlarm(this, note.id);
+            }
+        }
         viewModel.resetAllNotes();
         settings.clearAll();
         securityDataStore.clearAll();

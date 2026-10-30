@@ -79,6 +79,14 @@ public class SecurityDataStore {
     }
 
     /**
+     * Lifecycle cleanup — must be called when the app process is terminating
+     * (e.g. NotesApp.onTerminate) to prevent RxJava disposal leaks.
+     */
+    public void dispose() {
+        disposables.clear();
+    }
+
+    /**
      * Retorna um Flowable com o estado da segurança.
      */
     @OptIn(markerClass = ExperimentalCoroutinesApi.class)

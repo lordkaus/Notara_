@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Set;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
-    public DatabaseHelper(Context context) { super(context, "notes.db", null, 12); }
+    public DatabaseHelper(Context context) { super(context, "notes.db", null, 13); }
 
     @Override
     public void onCreate(SQLiteDatabase db) {
@@ -86,6 +86,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 db.execSQL("UPDATE notes SET reminder_time = 0, original_reminder_time = 0, recurrence_type = 0, recurrence_days = 0 WHERE alert_type = 1");
             } catch (Exception e) { e.printStackTrace(); }
         }
+        if (oldV < 13) {
+            // No schema change: version bump only, to match files previously
+            // touched by Room v13 (user_version=13). Without this, opening such
+            // a file throws "Can't downgrade database from version 13 to 12".
+        }
     }
 
     public long addNote(Note note) {
@@ -146,11 +151,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         List<String> args = new ArrayList<>();
         args.add(includeTrashed ? "1" : "0");
         if (filterTag != null) { sb.append(" AND tag = ?"); args.add(filterTag); }
+        boolean unicodeQuery = false;
         if (query != null && !query.isEmpty()) {
-            sb.append(" AND (title LIKE ? OR content LIKE ?)");
-            String like = "%" + query + "%";
-            args.add(like);
-            args.add(like);
+            unicodeQuery = !isAscii(query);
+            if (!unicodeQuery) {
+                // ESCAPE keeps % and _ literal: users type them as characters,
+                // not as wildcards.
+                sb.append(" AND (title LIKE ? ESCAPE '\\' OR content LIKE ? ESCAPE '\\')");
+                String like = "%" + escapeLike(query) + "%";
+                args.add(like);
+                args.add(like);
+            }
         }
         if (filterColors != null && !filterColors.isEmpty()) {
             sb.append(" AND color IN (");
@@ -177,9 +188,35 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         sb.append(" ORDER BY is_pinned DESC, last_modified DESC");
 
         Cursor c = db.rawQuery(sb.toString(), args.toArray(new String[0]));
-        if (c.moveToFirst()) { do { notes.add(cursorToNote(c)); } while (c.moveToNext()); }
+        if (c.moveToFirst()) {
+            do {
+                Note note = cursorToNote(c);
+                // SQLite's LIKE only case-folds ASCII. For accented queries
+                // (Portuguese), filter in Java with full Unicode lowercasing.
+                if (unicodeQuery && !matchesUnicode(note, query)) continue;
+                notes.add(note);
+            } while (c.moveToNext());
+        }
         c.close();
         return notes;
+    }
+
+    private static boolean isAscii(String s) {
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) > 127) return false;
+        }
+        return true;
+    }
+
+    private static String escapeLike(String s) {
+        return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    }
+
+    private static boolean matchesUnicode(Note note, String query) {
+        String q = query.toLowerCase(java.util.Locale.ROOT);
+        String title = note.title == null ? "" : note.title.toLowerCase(java.util.Locale.ROOT);
+        String content = note.content == null ? "" : note.content.toLowerCase(java.util.Locale.ROOT);
+        return title.contains(q) || content.contains(q);
     }
 
     public Note getNote(int id) {

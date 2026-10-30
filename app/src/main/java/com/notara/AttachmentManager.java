@@ -48,6 +48,18 @@ public class AttachmentManager {
         if (dir.exists()) deleteRecursive(dir);
     }
 
+    /** Deletes only the file of this attachment, keeping the note's other files. */
+    public static void deleteAttachmentFile(Context context, DatabaseHelper.Attachment a) {
+        if (a == null || a.filePath == null) return;
+        File f = getAttachmentFile(context, a);
+        if (f.exists()) f.delete();
+        File dir = f.getParentFile();
+        if (dir != null && dir.isDirectory()) {
+            String[] rest = dir.list();
+            if (rest != null && rest.length == 0) dir.delete();
+        }
+    }
+
     public static Bitmap generateThumbnail(String filePath, int maxSize) {
         BitmapFactory.Options opts = new BitmapFactory.Options();
         opts.inJustDecodeBounds = true;

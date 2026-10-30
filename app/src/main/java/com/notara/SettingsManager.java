@@ -14,6 +14,7 @@ public class SettingsManager {
     private static final String KEY_ALARM_COLOR_SYNC = "alarm_color_sync";
     private static final String KEY_CLOCK_FORMAT = "clock_format_24h";
     private static final String KEY_TRANSPARENCY = "note_transparency";
+    private static final String KEY_CHANNEL_RESET_VERSION = "channel_reset_version";
 
     private final SharedPreferences prefs;
     private final java.util.List<Runnable> observers = new java.util.ArrayList<>();
@@ -24,6 +25,7 @@ public class SettingsManager {
 
     public void addObserver(Runnable observer) { observers.add(observer); }
     public void removeObserver(Runnable observer) { observers.remove(observer); }
+    public void clearObservers() { observers.clear(); }
     private void notifyObservers() { for (Runnable r : observers) r.run(); }
 
     public int getTransparency() { return prefs.getInt(KEY_TRANSPARENCY, 100); }
@@ -39,7 +41,7 @@ public class SettingsManager {
     public void setUniformGridEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_UNIFORM_GRID, enabled).apply(); notifyObservers(); }
 
     public int getTheme() {
-        return 1;
+        return prefs.getInt(KEY_THEME, 1);
     }
     public void setTheme(int theme) { prefs.edit().putInt(KEY_THEME, theme).apply(); notifyObservers(); }
 
@@ -54,6 +56,9 @@ public class SettingsManager {
 
     public boolean isAlarmColorSync() { return prefs.getBoolean(KEY_ALARM_COLOR_SYNC, true); }
     public void setAlarmColorSync(boolean enabled) { prefs.edit().putBoolean(KEY_ALARM_COLOR_SYNC, enabled).apply(); notifyObservers(); }
+
+    public int getLastChannelResetVersion() { return prefs.getInt(KEY_CHANNEL_RESET_VERSION, 0); }
+    public void setLastChannelResetVersion(int version) { prefs.edit().putInt(KEY_CHANNEL_RESET_VERSION, version).apply(); }
 
     public void clearAll() {
         prefs.edit().clear().apply();

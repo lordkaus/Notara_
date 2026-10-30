@@ -40,9 +40,10 @@ android {
         applicationId "com.notara"
         minSdk 23
         targetSdk 35
-        versionCode 12
-        versionName "2.6"
+        versionCode 13
+        versionName "2.7"
         resConfigs "pt-rBR", "en"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -89,6 +90,10 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+
     tasks.withType(JavaCompile).configureEach {
         options.compilerArgs += ['-Xlint:all']
     }
@@ -114,6 +119,10 @@ dependencies {
     implementation "io.reactivex.rxjava3:rxjava:3.1.10"
     implementation "io.reactivex.rxjava3:rxandroid:3.0.2"
 
+    // Room
+    implementation "androidx.room:room-runtime:2.6.1"
+    annotationProcessor "androidx.room:room-compiler:2.6.1"
+
     // Security & Crypto
     implementation "androidx.security:security-crypto:1.1.0"
 
@@ -126,4 +135,12 @@ dependencies {
     // Testing
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.mockito:mockito-core:5.14.2'
+    testImplementation 'org.robolectric:robolectric:4.16.1'
+    testImplementation 'androidx.room:room-testing:2.6.1'
+
+    // On-device functional tests
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test:rules:1.6.1'
+    androidTestImplementation 'androidx.test:core:1.6.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
 }

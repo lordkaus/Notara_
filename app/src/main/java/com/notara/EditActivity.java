@@ -207,9 +207,11 @@ public class EditActivity extends AppCompatActivity {
         return super.dispatchTouchEvent(ev);
     }
 
+    private android.view.ViewTreeObserver.OnGlobalLayoutListener keyboardListener;
+
     private void setupKeyboardListener() {
         View root = binding.getRoot();
-        root.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+        keyboardListener = () -> {
             if (isPreviewMode || !isUnlocked) return;
             android.graphics.Rect r = new android.graphics.Rect();
             root.getWindowVisibleDisplayFrame(r);
@@ -226,7 +228,8 @@ public class EditActivity extends AppCompatActivity {
                     binding.btnAttachFAB.setVisibility(View.VISIBLE);
                 }
             }
-        });
+        };
+        root.getViewTreeObserver().addOnGlobalLayoutListener(keyboardListener);
     }
 
     private void lockContent() {
@@ -422,7 +425,7 @@ public class EditActivity extends AppCompatActivity {
                 DatabaseHelper db = new DatabaseHelper(this);
                 db.deleteAttachment(attachment.id);
             }
-            AttachmentManager.deleteNoteAttachmentDir(this, noteId);
+            AttachmentManager.deleteAttachmentFile(this, attachment);
             attachmentList.remove(attachment);
             attachmentAdapter.setItems(attachmentList);
             updateAttachmentVisibility();
@@ -838,6 +841,9 @@ public class EditActivity extends AppCompatActivity {
             viewModel.updateNote(currentNote);
         }
 
+        // BUG FIX: Set saved=true to prevent onPause auto-save from overwriting
+        // the checklist conversion (type=1, checklist format content).
+        saved = true;
         Intent intent = new Intent(this, ChecklistActivity.class);
         intent.putExtra("NOTE_ID", currentNote.id);
         startActivity(intent);
@@ -845,6 +851,7 @@ public class EditActivity extends AppCompatActivity {
     }
 
     private void saveNote() {
+        android.util.Log.d("Notara_Alarm", "saveNote() noteId=" + noteId + " reminderTime=" + reminderTime + " alarmTime=" + alarmTime + " now=" + System.currentTimeMillis() + " saved=" + saved);
         String title = binding.etTitle.getText().toString();
         String content = binding.editNoteText.getText().toString();
         if (title.isEmpty() && content.isEmpty() && (attachmentList == null || attachmentList.isEmpty())) {
@@ -882,14 +889,27 @@ public class EditActivity extends AppCompatActivity {
             AlarmReceiver.cancelAlarm(this, noteId);
         }
 
+        android.util.Log.d("Notara_Alarm", "saveNote() AFTER DB: reminderTime=" + reminderTime + " alarmTime=" + alarmTime + " noteId=" + noteId);
         if (alarmTime > System.currentTimeMillis()) {
+            android.util.Log.d("Notara_Alarm", "saveNote() SCHEDULING alarm for note " + noteId);
             AlarmReceiver.scheduleNoteAlarm(this, currentNote);
         } else if (noteId != -1) {
+            android.util.Log.d("Notara_Alarm", "saveNote() CANCELLING alarm for note " + noteId + " (alarmTime=" + alarmTime + ")");
             AlarmReceiver.cancelNoteAlarm(this, noteId);
         }
 
         saved = true;
         Toast.makeText(this, "Nota salva", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Lifecycle: remove GlobalLayoutListener to prevent activity leak
+        if (keyboardListener != null && binding != null) {
+            binding.getRoot().getViewTreeObserver().removeOnGlobalLayoutListener(keyboardListener);
+            keyboardListener = null;
+        }
     }
 
     @Override protected void onPause() { super.onPause(); if (!saved) saveNote(); }

@@ -1,6 +1,6 @@
 package com.notara;
 
-import android.util.Base64;
+import java.util.Base64;
 import java.security.SecureRandom;
 import java.security.spec.KeySpec;
 import javax.crypto.Cipher;
@@ -52,14 +52,14 @@ public class SecurityHelper {
         System.arraycopy(iv, 0, packageData, SALT_LENGTH, IV_LENGTH);
         System.arraycopy(cipherText, 0, packageData, SALT_LENGTH + IV_LENGTH, cipherText.length);
 
-        return Base64.encodeToString(packageData, Base64.NO_WRAP);
+        return Base64.getEncoder().encodeToString(packageData);
     }
 
     /**
      * Decriptografa o pacote usando a senha.
      */
     public static String decryptFromSharing(String encodedPackage, String password) throws Exception {
-        byte[] packageData = Base64.decode(encodedPackage, Base64.NO_WRAP);
+        byte[] packageData = Base64.getDecoder().decode(encodedPackage);
 
         if (packageData.length < SALT_LENGTH + IV_LENGTH + (GCM_TAG_LENGTH / 8)) {
             throw new IllegalArgumentException("Dados de compartilhamento corrompidos ou inválidos");

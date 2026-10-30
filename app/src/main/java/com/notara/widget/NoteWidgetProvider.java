@@ -44,7 +44,7 @@ public class NoteWidgetProvider extends AppWidgetProvider {
                     toggleChecklistItem(context, noteId, itemIndex);
                 } else {
                     // Clique geral no widget - abre a nota
-                    NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
+                    NoteRepository repository = new NoteRepositoryImpl(context);
                     DatabaseHelper.Note note = repository.getNote(noteId);
                     if (note != null) {
                         Intent openIntent = new Intent(context, note.type == 1 ? ChecklistActivity.class : EditActivity.class);
@@ -58,30 +58,59 @@ public class NoteWidgetProvider extends AppWidgetProvider {
     }
 
     private void toggleChecklistItem(Context context, int noteId, int index) {
-        NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
+        NoteRepository repository = new NoteRepositoryImpl(context);
         DatabaseHelper.Note note = repository.getNote(noteId);
-        if (note != null && note.type == 1) {
-            String[] lines = note.content.split("\n");
-            if (index >= 0 && index < lines.length) {
-                String line = lines[index];
-                if (line.contains("::")) {
-                    String[] parts = line.split("::");
-                    boolean checked = parts.length > 1 && parts[1].equals("1");
-                    lines[index] = parts[0] + "::" + (checked ? "0" : "1");
-                    
-                    StringBuilder newContent = new StringBuilder();
-                    for (int i = 0; i < lines.length; i++) {
-                        newContent.append(lines[i]);
-                        if (i < lines.length - 1) newContent.append("\n");
-                    }
-                    note.content = newContent.toString();
-                    repository.updateNote(note);
-                    
-                    // Notifica atualização
-                    updateAllWidgets(context);
-                }
-            }
+        if (note == null || note.type != 1) return;
+
+        String[] lines = note.content.split("\n");
+        if (index < 0 || index >= lines.length) return;
+
+        String line = lines[index];
+        if (!line.contains("::")) return;
+
+        String[] parts = line.split("::");
+        boolean checked = parts.length > 1 && parts[1].equals("1");
+        lines[index] = parts[0] + "::" + (checked ? "0" : "1");
+
+        StringBuilder newContent = new StringBuilder();
+        for (int i = 0; i < lines.length; i++) {
+            newContent.append(lines[i]);
+            if (i < lines.length - 1) newContent.append("\n");
         }
+        note.content = newContent.toString();
+        repository.updateNote(note);
+
+        // Update the matching table row in place instead of deleting/reinserting
+        // everything: item ids must survive because scheduled alarms use
+        // requestCode = noteId * 1000 + itemId * 2 + alertType, and the row also
+        // holds reminder_time / alert_type / recurrence_*.
+        DatabaseHelper dbHelper = new DatabaseHelper(context);
+        int targetOrdinal = -1;
+        int ordinal = -1;
+        for (int i = 0; i <= index; i++) {
+            String l = lines[i];
+            if (l.contains("::") || !l.trim().isEmpty()) ordinal++;
+            if (i == index) targetOrdinal = ordinal;
+        }
+
+        DatabaseHelper.ChecklistItem target = null;
+        for (DatabaseHelper.ChecklistItem it : dbHelper.getChecklistItems(noteId)) {
+            if (it.position == targetOrdinal) { target = it; break; }
+        }
+        if (target != null) {
+            target.checked = !checked;
+            dbHelper.updateChecklistItem(target);
+        } else {
+            DatabaseHelper.ChecklistItem ci = new DatabaseHelper.ChecklistItem();
+            ci.noteId = noteId;
+            ci.name = parts[0];
+            ci.checked = !checked;
+            ci.position = targetOrdinal;
+            dbHelper.insertChecklistItem(ci);
+        }
+
+        // Notifica atualização
+        updateAllWidgets(context);
     }
 
     public static void updateAllWidgets(Context context) {
@@ -100,7 +129,7 @@ public class NoteWidgetProvider extends AppWidgetProvider {
         SettingsManager settings = new SettingsManager(context);
         int noteId = context.getSharedPreferences("widget_prefs", Context.MODE_PRIVATE).getInt("note_" + appWidgetId, -1);
         
-        NoteRepository repository = new NoteRepositoryImpl(new DatabaseHelper(context));
+        NoteRepository repository = new NoteRepositoryImpl(context);
         DatabaseHelper.Note note = (noteId == -1) ? repository.getLatestNote() : repository.getNote(noteId);
 
         boolean is2x2 = false;
@@ -161,7 +190,8 @@ public class NoteWidgetProvider extends AppWidgetProvider {
         } else if (note != null) {
             views.setTextViewText(R.id.widget_title, note.isLocked == 1 ? "* Nota Protegida" : note.title);
 
-            int noteColor = Color.parseColor(EditActivity.noteColors[note.color]);
+            int colorIndex = Math.min(Math.max(note.color, 0), EditActivity.noteColors.length - 1);
+            int noteColor = Color.parseColor(EditActivity.noteColors[colorIndex]);
 
             int rootColor = Color.argb(alpha, Color.red(noteColor), Color.green(noteColor), Color.blue(noteColor));
             views.setInt(R.id.widget_root, "setBackgroundColor", rootColor);
